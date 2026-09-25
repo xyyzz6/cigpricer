@@ -1,0 +1,1305 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>烟价认字 · 拍照做表包</title>
+<style>
+:root{
+  --bg:#f2f2f7; --card:#fff; --line:rgba(60,60,67,.29); --fg:#1c1c1e; --dim:#8e8e93;
+  --primary:#007aff; --pri:#007aff; --primary-dim:rgba(0,122,255,.10);
+  --chip:#e9e9eb; --ok:#34c759; --warn:#ff9f0a; --err:#ff3b30;
+}
+@media (prefers-color-scheme: dark){
+  :root{
+    --bg:#000; --card:#1c1c1e; --line:rgba(84,84,88,.65); --fg:#fff; --dim:#98989f;
+    --primary:#0a84ff; --pri:#0a84ff; --primary-dim:rgba(10,132,255,.18);
+    --chip:#2c2c2e; --ok:#30d158; --warn:#ffd60a; --err:#ff453a;
+  }
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--fg);
+  font:15px/1.6 -apple-system,BlinkMacSystemFont,"PingFang SC","Microsoft YaHei",sans-serif;
+  -webkit-font-smoothing:antialiased;padding:16px 16px 40px}
+.wrap{max-width:760px;margin:0 auto}
+h1{font-size:26px;font-weight:700;letter-spacing:-.4px;margin:0 0 4px}
+.sub{color:var(--dim);font-size:13px;margin-bottom:16px;line-height:1.6}
+.card{background:var(--card);border:0;border-radius:14px;padding:15px;margin-bottom:14px;
+  box-shadow:0 1px 2px rgba(0,0,0,.04)}
+h3{font-size:15px;font-weight:600;margin:0 0 10px}
+button{font:inherit;padding:9px 15px;border-radius:10px;border:0;background:var(--chip);color:var(--fg);cursor:pointer}
+button.pri{background:var(--primary);color:#fff}
+button.sm{padding:6px 11px;font-size:13px;border-radius:8px}
+button:disabled{opacity:.45;cursor:default}
+button:active{filter:brightness(.95)}
+.row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.row+.row{margin-top:8px}
+.tag{display:inline-block;padding:2px 9px;border-radius:999px;background:var(--chip);font-size:12px;color:var(--dim)}
+.tag.ok{background:rgba(52,199,89,.15);color:var(--ok)}
+.tag.warn{background:rgba(255,159,10,.15);color:var(--warn)}
+.tag.err{background:rgba(255,59,48,.12);color:var(--err)}
+pre{background:#0f1115;color:#d7dae0;padding:11px;border-radius:10px;overflow:auto;max-height:260px;
+  font-size:12.5px;line-height:1.5;white-space:pre-wrap;word-break:break-all;margin:0}
+select,input[type=text]{font:inherit;padding:9px 11px;border:1px solid var(--line);border-radius:10px;background:var(--bg);color:var(--fg)}
+input[type=text]{width:100%}
+.dz{border:1.5px dashed var(--line);border-radius:12px;padding:18px;text-align:center;color:var(--dim)}
+.dz.on{border-color:var(--primary);background:var(--primary-dim)}
+.thumbs{display:flex;gap:8px;flex-wrap:wrap;margin-top:8px}
+.thumbs canvas{border:1px solid var(--line);border-radius:8px;background:#fff;cursor:pointer}
+.colgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:8px;margin-top:6px}
+.cellbox{border:1px solid var(--line);border-radius:10px;padding:8px}
+.cellbox textarea{width:100%;height:150px;font:12.5px/1.5 "PingFang SC",monospace;border:1px solid var(--line);
+  border-radius:8px;resize:vertical;padding:6px;background:var(--bg);color:var(--fg)}
+.cellbox .hd{font-size:12px;color:var(--dim);display:flex;justify-content:space-between;align-items:center;margin-bottom:4px}
+.note{font-size:12.5px;color:var(--dim);margin-top:6px;line-height:1.6}
+.hint{background:rgba(255,159,10,.12);border:1px solid rgba(255,159,10,.32);border-radius:10px;padding:9px 11px;font-size:13px;color:var(--warn)}
+ol.steps{margin:0;padding-left:20px;font-size:13.5px;color:var(--fg);line-height:1.7}
+ol.steps li{margin-bottom:3px}
+.big{font-size:15px}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>烟价认字 · 拍照做表包</h1>
+  <div class="sub">照片里的商品名让 AI 读出来，导出成「表包」，在「烟价速查」App 的管理页导入就能搜。</div>
+
+  <div class="card">
+    <h3>怎么用</h3>
+    <ol class="steps">
+      <li>选一张（或多张）价目表照片 —— 拍正、四边都进画面</li>
+      <li>点「开始认字」—— AI 一列一列读商品名（要联网，约 1 分钟）</li>
+      <li>看一眼读出来的名字，明显错的改一下</li>
+      <li>点「导出表包」→ 手机上会下载一个 .cigtable.json → 在 App 的「管理」页导入</li>
+    </ol>
+    <div class="note">⚠️ 价格不会被识别，表包里每格仍是原图上的截图 —— 认错的只是名字。</div>
+  </div>
+
+  <div class="card">
+    <h3>① 选照片</h3>
+    <div class="row">
+      <input type="file" id="picker" accept="image/*" multiple hidden>
+      <button class="pri" id="bpick">＋ 选照片 / 拍照</button>
+      <span id="pstat" class="tag">还没选</span>
+    </div>
+    <div class="row">
+      <label class="tag">版式 <select id="lmode">
+        <option value="auto">自动（推荐）</option>
+        <option value="pair">成对（名称|价格 交替）</option>
+        <option value="plain">普通（一格一列）</option>
+      </select></label>
+      <button class="sm" id="bregrid">重新认版面（会丢掉已认的名字）</button>
+    </div>
+    <div class="dz" id="dz">也可以把照片拖到这里</div>
+    <div class="thumbs" id="thumbs"></div>
+  </div>
+
+  <div class="card">
+    <h3>② 认字</h3>
+    <div class="row">
+      <span class="tag" style="font-weight:600">我自己的 API（OpenAI 兼容接口）</span>
+      <span id="engstat" class="tag"></span>
+    </div>
+
+    <div id="engform">
+      <div class="note">填标准的 <b>OpenAI 兼容</b>接口（OpenAI / 阿里云百炼 / 火山方舟 / 硅基流动 / 智谱 / DeepSeek / 各类中转都行）。
+        选下面的厂商会自动填好地址，只需要粘贴密钥。<b>密钥只存在你自己的浏览器里</b>，不会上传到任何地方。</div>
+      <div style="margin-top:10px">
+        <div class="note" style="margin-bottom:3px">接口地址（选上面的厂商会自动填）</div>
+        <input type="text" id="abase" style="width:100%" placeholder="https://api.openai.com/v1">
+        <div class="note" style="margin:8px 0 3px">密钥 Key（只存在你自己的浏览器里）</div>
+        <div class="row">
+          <input type="password" id="akey" style="flex:1;min-width:0" placeholder="sk-…">
+          <button class="sm" id="bshowkey">显示</button>
+          <button class="sm" id="bclearkey">清除</button>
+        </div>
+        <div class="note" style="margin:8px 0 3px">厂商（自动填地址；火山方舟要填你自己的接入点 ID）</div>
+        <select id="epreset" style="max-width:100%">
+          <option value="">— 选厂商自动填地址 —</option>
+          <option value="https://api.openai.com/v1" data-model="gpt-4o-mini">OpenAI 官方</option>
+          <option value="https://dashscope.aliyuncs.com/compatible-mode/v1" data-model="qwen-vl-max-latest">阿里云百炼（通义）</option>
+          <option value="https://ark.cn-beijing.volces.com/api/v3" data-model="">火山方舟（豆包）</option>
+          <option value="https://api.siliconflow.cn/v1" data-model="Qwen/Qwen3-VL-30B-A3B-Instruct">硅基流动</option>
+          <option value="https://open.bigmodel.cn/api/paas/v4" data-model="glm-4.1v-thinking-flash">智谱（GLM）</option>
+          <option value="https://api.deepseek.com/v1" data-model="deepseek-chat">DeepSeek（文本-only，无视觉，认照片请选别的）</option>
+          <option value="https://generativelanguage.googleapis.com/v1beta/openai" data-model="gemini-2.0-flash">Google Gemini</option>
+        </select>
+      </div>
+      <div class="note" style="margin-top:10px">模型名（多个用英文逗号隔开，前一个失败自动换下一个）</div>
+      <div class="row" style="margin-top:4px">
+        <input type="text" id="amodel" style="flex:1;min-width:0" placeholder="不知道填什么就点「拉取模型列表」">
+        <button class="sm" id="bfetch">拉取模型列表</button>
+      </div>
+      <div class="row" id="mlistrow" style="display:none"><select id="mlist" style="max-width:100%"></select></div>
+      <div class="row" style="margin-top:8px">
+        <button class="sm pri" id="btest">测试接口</button>
+        <span id="tstat" class="tag"></span>
+      </div>
+      <div class="note" id="urlprev"></div>
+    </div>
+
+    <div class="row">
+      <button class="pri" id="brun">开始认字</button>
+      <button id="bretry">只重认没认好的</button>
+      <label class="tag">模型 <select id="msel"><option value="auto">auto（推荐）</option></select></label>
+      <span id="rstat" class="tag">待认</span>
+    </div>
+    <div id="progress" class="note"></div>
+    <div id="badcols"></div>
+  </div>
+
+  <div class="card" id="editcard" style="display:none">
+    <h3>③ 校对名字</h3>
+    <div class="note">一行一个商品名。<b>不是商品的格子留空或写 -</b>（表头、日期、空格），导出时会自动跳掉。</div>
+    <div id="edits"></div>
+  </div>
+
+  <div class="card" id="expcard" style="display:none">
+    <h3>④ 导出表包</h3>
+    <div id="expform"></div>
+    <div class="row" style="margin-top:10px">
+      <button class="pri" id="bexport">导出表包（下载 .cigtable.json）</button>
+      <span id="estat" class="tag"></span>
+    </div>
+    <div class="note" id="exphint"></div>
+  </div>
+
+  <div class="card"><h3>日志</h3><pre id="log"></pre></div>
+</div>
+
+<script src="assets/crop.js"></script>
+<script>
+(function () {
+  'use strict';
+
+  var PACK_FMT = 'cigpricer.table', PACK_V = 1;
+
+  var SYS = '你是一个价目表转录员。用户给你一张价目表**某一列**的竖条图片，'
+          + '每一行是一格，格子里左边是商品名称、右边是批发价。'
+          + '你唯一要做的事：从上到下把每一格的**商品名称**读出来。'
+          + '只认图上的字，不要根据品牌常识去「补全」或改写，图上写什么就写什么（包括错别字）。'
+          + '特别注意：商品名**开头的数字或字母是名字的一部分**（如「6克双喜」「01软广喜」），'
+          + '必须原样读出来，绝不能省略。';
+
+  /* ------------------------------------------------------------ 基础 */
+
+  var $ = function (s) { return document.querySelector(s); };
+  var LOGS = [];
+  function log(m) {
+    LOGS.push(String(m));
+    $('#log').textContent = LOGS.join('\n');
+    $('#log').scrollTop = $('#log').scrollHeight;
+    if (LOGS.length > 400) LOGS.shift();
+  }
+  function b64(u8) {
+    var s = '', n = u8.length;
+    for (var i = 0; i < n; i += 0x8000) s += String.fromCharCode.apply(null, u8.subarray(i, i + 0x8000));
+    return btoa(s);
+  }
+  function canvasOf(w, h) { var c = document.createElement('canvas'); c.width = w; c.height = h; return c; }
+  function sleep(ms) { return new Promise(function (r) { setTimeout(r, ms); }); }
+
+  /* ------------------------------------------------------------ 云 */
+
+  /* 探针 / UI 指定的首选模型。⚠️ ensureModels 每次都会重建下拉框，
+     不记住这个值的话，探针 --model 指定的模型会在 runCols 时被重建成默认值 */
+  var PREF = '';
+  function fillSelect(list, def) {
+    var sel = $('#msel');
+    sel.innerHTML = '';
+    list.forEach(function (id) {
+      var o = document.createElement('option'); o.value = id; o.textContent = id; sel.appendChild(o);
+    });
+    if (def && list.indexOf(def) >= 0) sel.value = def;
+    return list;
+  }
+
+  function ensureModels() {
+    var mine = ENG.models.length ? ENG.models : splitModels($('#amodel').value);
+    if (!mine.length) return Promise.reject(new Error('还没填模型名（认字页②区）'));
+    return Promise.resolve(fillSelect(mine, PREF || mine[0]));
+  }
+
+  /* ------------------------------------------------------------ 引擎：自带 API
+
+     走标准 OpenAI 兼容 /chat/completions —— OpenAI、阿里云百炼、火山方舟、硅基流动、
+     智谱、Gemini（OpenAI 兼容模式）、各种中转站都是这个协议。
+     ⚠️ 唯一的硬门槛：对方服务器要允许网页跨域（CORS）。被拒时错误里会说清楚。
+     （2026-09-25 晚：免费「内置」云引擎已按店主要求整个删掉 —— 限流烦人且 App 里用不了。） */
+
+  var KEY_STORE = 'cig_ocr_engine';
+  /* IN_APP：被「烟价速查」App 用 srcdoc iframe 内嵌时为真。
+     认完不下载文件，直接把表包 postMessage 给 App 入库（少两步手工活）。 */
+  var IN_APP = false;
+  try { IN_APP = (window.parent !== window); } catch (e) { }
+
+  var ENG = { mode: 'custom', base: '', key: '', models: [] };
+
+  function loadEngine() {
+    try {
+      var s = JSON.parse(localStorage.getItem(KEY_STORE) || '{}');
+      if (s && typeof s === 'object') ENG = Object.assign(ENG, s);
+    } catch (e) { }
+    if (!Array.isArray(ENG.models)) ENG.models = String(ENG.models || '').split(/[,，]/).filter(Boolean);
+    ENG.mode = 'custom';    // 只有这一种引擎了（旧存档里的 builtin 一并迁掉）
+    return ENG;
+  }
+  function saveEngine() { try { localStorage.setItem(KEY_STORE, JSON.stringify(ENG)); } catch (e) { } }
+  function splitModels(s) {
+    return String(s || '').split(/[,，]/).map(function (x) { return x.trim(); }).filter(Boolean);
+  }
+  /* 用户填的 base → 完整的 chat/completions 地址 */
+  function apiUrl(base) {
+    var b = String(base || '').trim().replace(/\/+$/, '');
+    if (!b) throw new Error('还没填接口地址');
+    if (!/^https?:\/\//i.test(b)) throw new Error('接口地址要以 http:// 或 https:// 开头');
+    if (/\/chat\/completions$/.test(b)) return b;
+    if (!/\/v\d+[a-z0-9.]*$/.test(b)) b += '/v1';      // 只给了域名 → 补版本段
+    return b + '/chat/completions';
+  }
+
+  /* 一次带图提问（自带 API）。einmal 失败由调用方重试。 */
+  function chatOnceCustom(model, userContent, base, key) {
+    var url = apiUrl(base);
+    if (!key) throw new Error('还没填密钥（API Key）');
+    if (!/^[\x20-\x7E]*$/.test(key)) {
+      throw new Error('密钥里有中文或全角符号（看起来是复制多了东西）—— 正常的密钥只有字母数字和 -_.');
+    }
+    if (!/^[\x20-\x7E]*$/.test(model)) {
+      throw new Error('模型名里有中文或全角符号："' + model + '"');
+    }
+    var body = {
+      model: model, temperature: 0, stream: false,
+      messages: [{ role: 'system', content: SYS }, { role: 'user', content: userContent }]
+    };
+    var ctrl = typeof AbortController === 'function' ? new AbortController() : null;
+    var timer = ctrl ? setTimeout(function () { ctrl.abort(); }, 180000) : null;
+    var done = function (x) { if (timer) clearTimeout(timer); return x; };
+    return fetch(url, {
+      method: 'POST', signal: ctrl ? ctrl.signal : undefined,
+      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + key },
+      body: JSON.stringify(body)
+    }).then(function (r) {
+      return r.text().then(function (t) {
+        var j = null; try { j = JSON.parse(t); } catch (e) { }
+        if (!r.ok) {
+          /* 各家报错长得不一样：OpenAI 是 {error:{message}}，
+             硅基流动是 {code,message}，还有 {msg} / {detail} 的。都兜住，
+             不然界面上只会甩一句没用的「不是 OpenAI 格式」。 */
+          var why = j && ((j.error && (j.error.message || j.error.code || j.error.msg)) ||
+                          j.message || j.msg || j.detail) || t.slice(0, 160);
+          var err = new Error(String(r.status) + ' ' + String(why)); err.status = r.status; throw err;
+        }
+        var c = j && j.choices && j.choices[0] && j.choices[0].message && j.choices[0].message.content;
+        /* ⚠️ 有些家（硅基流动）失败也回 HTTP 200，只是正文里带 code/message、
+           没有 choices —— 不识别的话界面上只会糊成一句「不是 OpenAI 格式」。 */
+        if (c == null && j && (j.code || j.message || j.error)) {
+          var bad = new Error(String((j.error && (j.error.message || j.error.code)) || j.message || j.code));
+          bad.status = 400; throw bad;
+        }
+        if (c == null) throw new Error('返回的不是 OpenAI 格式：' + t.slice(0, 160));
+        return c;
+      });
+    }).catch(function (e) {
+      if (e && e.name === 'AbortError') throw new Error('请求超时（180 秒没回）');
+      if (e instanceof TypeError) throw new Error('连不上（多半是对方不允许网页跨域：换家中转，或自己搭个代理）');
+      throw e;
+    }).then(done, function (e) { done(); throw e; });
+  }
+
+  /* 一次带图的提问。失败往外抛（带 code / status）。 */
+  function chatOnce(model, userContent, onDelta) {
+    /* 自己的 key：同模型重试 2 次（429 / 5xx / 网络抖动），再交给外层换下一个模型 */
+    var tries = 0;
+    function go() {
+      return chatOnceCustom(model, userContent, ENG.base, ENG.key).catch(function (e) {
+        tries++;
+        var st = e && e.status || 0;
+        if (tries < 3 && (st === 429 || (st >= 500 && st < 600) || st === 0)) {
+          return sleep(1500 * tries).then(go);
+        }
+        throw e;
+      });
+    }
+    return go();
+  }
+
+  /* 逐个模型退：某个模型报 429（配额）或不可用就换下一个。
+     ⚠️ 必须给退的次数封顶：19 个模型 × 8 列 = 152 次空转，跑一圈要十几分钟，
+        而且全是失败。所以**连续配额错误超过 4 个模型就直接认输**，把话说清楚。 */
+  var QUOTA_MAX = 4;
+  function chatFallback(order, content, onNote) {
+    var i = 0, quota = 0, lastErr = null;
+    function step() {
+      if (i >= order.length) return Promise.reject(lastErr || new Error('MODEL_EXHAUSTED'));
+      if (quota >= QUOTA_MAX) return Promise.reject(new Error('QUOTA'));
+      var m = order[i++];
+      return chatOnce(m, content).catch(function (e) {
+        lastErr = e;
+        var code = e && (e.code || e.status) || 0;
+        var msg = (e && e.message) || String(e);
+        if (/429|quota|频率|超出|限/.test(String(code) + msg)) quota++;
+        if (onNote) onNote('模型 ' + m + ' 失败（' + code + ' ' + msg.slice(0, 70) + '），换下一个');
+        if (quota >= QUOTA_MAX) return Promise.reject(new Error('QUOTA'));
+        if (i >= order.length) return Promise.reject(lastErr);
+        return step();
+      });
+    }
+    return step();
+  }
+
+  /* ------------------------------------------------------------ 照片 */
+
+  /* 拼给 AI 看的竖条图参数（实测：行高 34 → 48 能救回几个形近字误读） */
+  var ROW_MIN = 48, UP_CAP = 4, H_CAP = 4096;
+  /* 格子内部墨水占比低于它 = 空格（实测三张表：空格 ≤0.65%，有字 ≥2.9%） */
+  var EMPTY_INK = 0.02;
+
+  /* ---- 竖线检测 + 成对分列 ----
+     findLines/groupColumns 从 tools/cropjs_src.js 原样搬来，pairColumns 从
+     tools/plib.py 的 pair_columns 搬来。CIGCROP 只导出了"分组结果"，没导出竖线坐标，
+     而 [商品名称][批发价] 交替的版式必须在竖线层面重新分组 —— 不然「行情8月14日」
+     会切成 7 列而不是 6 列，整张表错位。改那两处判据时记得同步这里。 */
+  var DARKV = 160, LINE_THR = 0.55, MIN_GAP = 8;
+
+  function findLinesJs(ratio, thr, minGap) {
+    var idx = [];
+    for (var i = 0; i < ratio.length; i++) if (ratio[i] > thr) idx.push(i);
+    var grp = [];
+    if (idx.length) {
+      var s = idx[0], q = idx[0];
+      for (var k = 1; k < idx.length; k++) {
+        var it = idx[k];
+        if (it <= q + 2) q = it; else { grp.push([s, q]); s = q = it; }
+      }
+      grp.push([s, q]);
+    }
+    var out = [];
+    for (var j = 0; j < grp.length; j++) {
+      var c = Math.round((grp[j][0] + grp[j][1]) / 2);
+      if (out.length && c - out[out.length - 1] < minGap)
+        out[out.length - 1] = Math.round((out[out.length - 1] + c) / 2);
+      else out.push(c);
+    }
+    return out;
+  }
+
+  function groupColsJs(xs) {
+    var out = [], i = 0;
+    while (i + 1 < xs.length) {
+      var a = xs[i], b = xs[i + 1];
+      if (i + 2 < xs.length && (xs[i + 2] - b) < (b - a) * 0.7) { out.push([a, xs[i + 2]]); i += 2; }
+      else { out.push([a, b]); i += 1; }
+    }
+    return out;
+  }
+
+  function pairColsJs(xs) {
+    if (xs.length < 2) return [];
+    var d = [], i = 0, out = [];
+    for (var k = 0; k < xs.length - 1; k++) d.push(xs[k + 1] - xs[k]);
+    if (d.length > 1 && d[0] < d[1]) { out.push([0, xs[1]]); i = 1; }  // 首条线是"名称|价格"线
+    while (i + 2 < xs.length) { out.push([xs[i], xs[i + 2]]); i += 2; }
+    if (i + 1 < xs.length) out.push([xs[i], xs[i + 1]]);
+    return out;
+  }
+
+  function median(a) {
+    if (!a.length) return 0;
+    var b = a.slice().sort(function (x, y) { return x - y; });
+    return b[Math.floor(b.length / 2)];
+  }
+
+  /** 交替版式的特征：相邻间距一宽一窄、反复出现（宽/窄 ≥ 1.6） */
+  function detectCols(cv, mode) {
+    var W = cv.width, H = cv.height;
+    var d = cv.getContext('2d').getImageData(0, 0, W, H).data;
+    var r = new Float32Array(W);
+    for (var y = 0; y < H; y++) {
+      var o = y * W;
+      for (var x = 0; x < W; x++) {
+        var p = (o + x) * 4;
+        if ((d[p] * 299 + d[p + 1] * 587 + d[p + 2] * 114) / 1000 < DARKV) r[x]++;
+      }
+    }
+    for (var x2 = 0; x2 < W; x2++) r[x2] /= H;
+    var xs = findLinesJs(r, LINE_THR, MIN_GAP);
+    if (xs.length < 2) return null;
+    var g = groupColsJs(xs), pr = pairColsJs(xs);
+    var gaps = [];
+    for (var k = 0; k < xs.length - 1; k++) gaps.push(xs[k + 1] - xs[k]);
+    var ev = median(gaps.filter(function (_, i) { return i % 2 === 0; }));
+    var od = median(gaps.filter(function (_, i) { return i % 2 === 1; }));
+    var alt = gaps.length >= 6 && ev > 0 && od > 0 &&
+      Math.max(ev, od) / Math.min(ev, od) >= 1.6;
+    var cols = g, how = '普通';
+    /* ⚠️ 判断"该不该用成对"不能只比列数：行情9月14日 两种分列**都是 10 列**，
+       但普通分列的第一列是 [109,162]（只有价格那半格，名称贴在图片左边缘外），
+       模型看到的全是价格 → 整列读成 -。交替特征成立时，成对才是对的版式。 */
+    if (mode === 'pair' || (mode === 'auto' && alt && pr.length && pr.length <= g.length)) {
+      cols = pr; how = '成对';
+    }
+    return { cols: cols, how: how, alt: alt, nGroup: g.length, nPair: pr.length,
+             xs: xs, even: ev, odd: od };
+  }
+
+  /** 整张表的"格子内部墨水占比"，一次算完（判断空格用） */
+  function inkMap(cv, plan) {
+    var W = cv.width, H = cv.height;
+    var d = cv.getContext('2d').getImageData(0, 0, W, H).data;
+    var IN = 4, out = [];
+    for (var ci = 0; ci < plan.cols.length; ci++) {
+      var col = [];
+      var x0 = Math.max(0, plan.cols[ci][0] + IN), x1 = Math.min(W, plan.cols[ci][1] - IN);
+      for (var ri = 0; ri < plan.rows.length; ri++) {
+        var y0 = Math.max(0, plan.rows[ri][0] + IN), y1 = Math.min(H, plan.rows[ri][1] - IN);
+        var n = 0, tot = 0;
+        if (x1 - x0 > 2 && y1 - y0 > 2) {
+          tot = (x1 - x0) * (y1 - y0);
+          for (var y = y0; y < y1; y++) {
+            var o = (y * W + x0) * 4;
+            for (var x = x0; x < x1; x++, o += 4)
+              if ((d[o] * 299 + d[o + 1] * 587 + d[o + 2] * 114) / 1000 < DARKV) n++;
+          }
+        }
+        col.push(tot ? n / tot : 0);
+      }
+      out.push(col);
+    }
+    return out;
+  }
+
+  var SEQ = 0;
+  var PHOTOS = [];      // {id,file,name,plan,cv,rot,cols:[{names,model,state,raw}],state,err,tbl}
+
+  function addFiles(list) {
+    var files = Array.prototype.slice.call(list || []);
+    return files.reduce(function (chain, f) {
+      return chain.then(function () { return addOne(f); });
+    }, Promise.resolve()).then(renderAll);
+  }
+
+  function addOne(f) {
+    if (!/^image\//.test(f.type || '') && !/\.(jpe?g|png|heic|heif|webp|bmp)$/i.test(f.name)) {
+      log('跳过不是图片的：' + f.name); return Promise.resolve();
+    }
+    var p = {
+      id: ++SEQ, file: f, name: String(f.name || ('照片' + SEQ)).replace(/\.[^.]+$/, ''),
+      plan: null, cv: null, cols: [], state: 'busy', err: '', tbl: p_name(f)
+    };
+    PHOTOS.push(p);
+    renderAll();
+    return CIGCROP.toDrawable(f).then(function (bmp) {
+      var res = CIGCROP.analyze(bmp, null);
+      var plan = res.plan;
+      p.cv = CIGCROP.rotCanvas(bmp, plan.ang).cv;
+      if (bmp.close) { try { bmp.close(); } catch (e) {} }
+      /* 成对版式重新分列（见 detectCols 的注释） */
+      var det = detectCols(p.cv, $('#lmode').value);
+      if (det && det.cols.length) { plan = Object.assign({}, plan, { cols: det.cols }); }
+      p.plan = plan; p.how = res.how; p.det = det;
+      p.ink = inkMap(p.cv, plan);
+      /* 表头行：某一行超过一半的列是空的 = 整页的标题/电话横跨全表
+         （实测「行情8月14日」第 1、2 行是红字标题+手机号，只有第 4 列有墨水，
+          模型把它们当非商品行跳过 → 整列错位 2 行。整行剔除就不会了。） */
+      p.headerRows = [];
+      for (var hr = 0; hr < plan.rows.length; hr++) {
+        var emp = 0;
+        for (var hc = 0; hc < p.ink.length; hc++) if (p.ink[hc][hr] < EMPTY_INK) emp++;
+        if (p.ink.length && emp / p.ink.length >= 0.5) p.headerRows.push(hr);
+      }
+      p.cols = plan.cols.map(function () { return { names: null, model: '', state: 'new', raw: '' }; });
+      p.state = 'grid';
+      var empty = 0;
+      p.ink.forEach(function (col) { col.forEach(function (v) { if (v < EMPTY_INK) empty++; }); });
+      log('· ' + p.name + '：切出 ' + plan.cols.length + ' 列 × ' + plan.rows.length +
+          ' 行（旋转 ' + plan.ang + '°，' + (det ? det.how + '分列' : res.how) +
+          (det && det.nGroup !== det.cols.length ? '，普通分列是 ' + det.nGroup + ' 列' : '') +
+          '，其中 ' + empty + ' 格是空的' +
+          (p.headerRows.length ? '，第 ' + p.headerRows.map(function (r) { return r + 1; }).join(',') +
+            ' 行是表头' : '') + '）');
+      if (det) log('  · 竖线 ' + det.xs.length + ' 条，宽/窄中位 ' +
+          Math.round(det.even) + '/' + Math.round(det.odd) + '，交替=' + det.alt +
+          '，普通=' + det.nGroup + ' 成对=' + det.nPair + '，xs=' + det.xs.join(','));
+      return p;
+    }).catch(function (e) {
+      p.state = 'err';
+      p.err = e && e.code === 'NOGRID'
+        ? '照片里找不到表格线 —— 请把表格拍正、四边都进画面（切 rows=' + (e.best || 0) + '）'
+        : ((e && e.message) || String(e));
+      log('✗ ' + p.name + '：' + p.err);
+      return p;
+    });
+  }
+  function p_name(f) { return String(f.name || '照片').replace(/\.[^.]+$/, ''); }
+
+  /* ------------------------------------------------------------ 切图 */
+
+  /** 一整列的竖条图（给 AI 看）。
+   *
+   * ★ 只拼 rowsIdx 里列出的行，**空行不进来** —— 这是有教训的：
+   *   整列直接发过去，模型会把开头两个空格合并成一行（62 行只吐 60 行），
+   *   我们在末尾补 `-`，于是**整列往后错 2 行**，名字全对不上号。
+   *   空行自己先用墨水占比筛掉（inkOf），发给模型的图里就只剩有字的行，
+   *   一行对一个行号，不会再错位。
+   */
+  function stripOf(p, ci, rowsIdx) {
+    var plan = p.plan, PAD = CIGCROP.consts.PAD;
+    var x0 = Math.max(0, plan.cols[ci][0] - PAD), x1 = Math.min(plan.W, plan.cols[ci][1] + PAD);
+    var sw = x1 - x0;
+    var totH = 0;
+    rowsIdx.forEach(function (ri) { totH += plan.rows[ri][1] - plan.rows[ri][0] + 2 * PAD; });
+    var rowH = totH / Math.max(rowsIdx.length, 1);
+    var up = Math.max(1, Math.min(UP_CAP, ROW_MIN / Math.max(rowH, 1)));
+    var ow = Math.round(sw * up), oh = Math.round(totH * up);
+    if (oh > H_CAP) { var k = H_CAP / oh; ow = Math.round(ow * k); oh = H_CAP; }
+    var c = canvasOf(ow, oh), cx = c.getContext('2d');
+    cx.fillStyle = '#fff'; cx.fillRect(0, 0, ow, oh);
+    cx.imageSmoothingEnabled = true; cx.imageSmoothingQuality = 'high';
+    var yy = 0;
+    rowsIdx.forEach(function (ri) {
+      var y0 = Math.max(0, plan.rows[ri][0] - PAD), y1 = Math.min(plan.H, plan.rows[ri][1] + PAD);
+      var sh = y1 - y0, dh = Math.min(Math.round(sh * up), oh - yy);
+      if (dh > 0) cx.drawImage(p.cv, x0, y0, sw, sh, 0, yy, ow, dh);
+      yy += dh;
+    });
+    return { url: c.toDataURL('image/jpeg', 0.92), w: ow, h: oh };
+  }
+
+  /** 单格 PNG（进表包，跟 App 里「用照片加表」切出来的一样） */
+  async function cellOf(p, ci, ri) {
+    var plan = p.plan, PAD = CIGCROP.consts.PAD;
+    var x0 = Math.max(0, plan.cols[ci][0] - PAD), x1 = Math.min(plan.W, plan.cols[ci][1] + PAD);
+    var y0 = Math.max(0, plan.rows[ri][0] - PAD), y1 = Math.min(plan.H, plan.rows[ri][1] + PAD);
+    var sw = Math.max(1, x1 - x0), sh = Math.max(1, y1 - y0);
+    var up = Math.max(1, Math.min(CIGCROP.consts.UP_MAX,
+      Math.round(CIGCROP.consts.TARGET_W / Math.max(sw, 1)) || 1));
+    var ow = Math.round(sw * up), oh = Math.round(sh * up);
+    var c = canvasOf(ow, oh), cx = c.getContext('2d');
+    cx.fillStyle = '#fff'; cx.fillRect(0, 0, ow, oh);
+    cx.imageSmoothingEnabled = true; cx.imageSmoothingQuality = 'high';
+    cx.drawImage(p.cv, x0, y0, sw, sh, 0, 0, ow, oh);
+    var bytes = await CIGCROP.encodePNG(cx.getImageData(0, 0, ow, oh).data, ow, oh);
+    return { w: ow, h: oh, img: 'data:image/png;base64,' + b64(bytes) };
+  }
+
+  /* ------------------------------------------------------------ 认一列 */
+
+  /**
+   * 把模型的输出拆成「一行一个名字」。
+   *
+   * ★ 为什么要模型输出 `行号|名称`：不带行号时，**所有模型都会把商品名开头的数字
+   *   当成序号删掉** —— 实测 `01合广喜`、`95南京`、`333软牡丹`、`5克中南海`、
+   *   `777长白山`、`30年国酒香` 全被读成去掉数字的版本，auto / glm-5v / kimi / deepseek
+   *   四个模型在这几行**错得一模一样**。写清楚"开头的数字要保留"没用（它在照着自己的
+   *   "列清单"习惯清理格式）。行号单独占一列之后，"01"就不再可能被当成行号，
+   *   这类错误基本消失。
+   */
+  function cleanLines(out) {
+    var lines = String(out || '').split(/\r?\n/);
+    var res = [];
+    for (var i = 0; i < lines.length; i++) {
+      var s = lines[i].trim();
+      if (/^`{3,}/.test(s)) continue;                 // 模型包了代码块围栏
+      s = s.replace(/^\s*[|｜]?\s*/, '');
+      var p = s.indexOf('|'), q = s.indexOf('｜');
+      if (p < 0 || (q >= 0 && q < p)) p = q;
+      if (p >= 0) {
+        s = s.slice(p + 1).trim();                    // 「行号|名称」→ 取名称
+      } else {
+        s = s.replace(/^\s*(?:第)?\s*\d+\s*(?:行|格)?\s*[.、:：)）]\s*/, '');
+        s = s.replace(/^[-*]\s+/, '');
+      }
+      s = s.replace(/^`+|`+$/g, '').trim();
+      res.push(s);
+    }
+    while (res.length && res[res.length - 1] === '') res.pop();
+    return res;
+  }
+
+  function promptFor(K, N, nTotal, ci) {
+    return '这是价目表照片**第 ' + (ci + 1) + ' 列**（整张表共 ' + nTotal + ' 列）里'
+      + '**有字的 ' + K + ' 行**（空格子已经帮你去掉了，所以图里每一行都有字，一行一格）。'
+      + '\n每一格里左边是商品名称、右边是批发价（价格不用管）。'
+      + '\n请从上到下逐格读出商品名称，输出格式：'
+      + '\n1. 每行固定写成 `行号|商品名`，行号从 1 到 ' + K + '，竖线是半角 |'
+      + '\n   例：`3|软珍品日子`、`25|01合广喜`（**开头的 01 是名字的一部分，不能当成序号删掉**）'
+      + '\n2. 一行也不能少，必须输出**正好 ' + K + ' 行**'
+      + '\n3. 不要价格、不要标点、不要任何解释'
+      + '\n4. **左边有字就照抄，不要自己判断它算不算商品名** —— 有的行只写一个品牌名（如「中华」「玉溪」），'
+      + '那也是要交的名字，照抄就行'
+      + '\n5. 图上写什么就读什么，包括错别字（如「南京弦赫门」「薄荷十二叉」），不要改写成正确品牌名'
+      + '\n6. 只有左边**完全空白**才写一个半角短横线 -；**右边的价格数字绝对不要写进来**'
+      + '\n7. 有的行是**日期、标题、电话**之类的说明文字 —— 那一行也要占一行，商品名写 -，'
+      + '**绝不能因为它不是商品就整行跳过**（跳一行后面就全错位了）';
+  }
+
+  function modelOrder() {
+    var mine = ENG.models.length ? ENG.models : splitModels($('#amodel').value);
+    if (!mine.length) throw new Error('还没填模型名（认字页②区）');
+    var sel = $('#msel').value || mine[0];
+    if (mine.indexOf(sel) < 0) sel = mine[0];     // 下拉框的值不在列表里就以填的为准
+    return [sel].concat(mine.filter(function (m) { return m !== sel; }));
+  }
+
+  /* 认完一列后，把照片最上面 3 格单独切成小图再问一次，核对"开头有没有跳行"。
+     整列发过去时，模型会把日期/标题/电话这种说明行当非商品吞掉（实测两张某表都这样），
+     后面全部错位。单独问 3 格它跳无可跳 —— 对不上就知道跳了几行，照着搬回来。 */
+  function verifyHead(p, ci) {
+    var probe = [0, 1, 2].filter(function (ri) { return ri < p.plan.rows.length; });
+    return Promise.all(probe.map(function (ri) { return cellOf(p, ci, ri); })).then(function (cells) {
+      var content = [{
+        type: 'text',
+        text: '这是同一张价目表**同一列最上面的 ' + cells.length + ' 格**（按从上到下的顺序）。'
+          + '每格里左边是商品名称、右边是批发价。'
+          + '请逐格读出左边的商品名，一行一个，格式 `序号|名称`（序号 1 到 ' + cells.length + '，半角 |）。'
+          + '某格里左边不是商品名（是日期、标题、电话、空的），名称就写一个 -。'
+          + '只要 ' + cells.length + ' 行，不要任何解释。'
+      }];
+      cells.forEach(function (c) {
+        content.push({ type: 'image_url', image_url: { url: c.img, detail: 'high' } });
+      });
+      return chatFallback(modelOrder(), content, function () { });
+    }).then(function (out) {
+      return cleanLines(out).slice(0, probe.length).map(function (s) { return HEADER_RE.test(s) ? '-' : s; });
+    });
+  }
+
+  function normName(s) { return String(s == null ? '' : s).replace(/\s+/g, ''); }
+
+  /* got（整列按位置排的结果）开头跳了几个照片行？拿前 3 格的独立读数对一对。
+     ⚠️ 方向别搞反：v[j] 是**照片第 j+1 行**，got[k] 对应**照片第 s+k+1 行**，
+     所以要比的是 v[j] 与 got[j-s]，不是 got[s+j] —— 写反了就等于永远不会命中。 */
+  function headShift(v, got) {
+    for (var s = 0; s <= 2; s++) {
+      var ok = true, any = false;
+      for (var j = s; j < v.length; j++) {
+        var k = j - s;
+        if (k >= got.length) { ok = false; break; }
+        if (normName(v[j]) !== normName(got[k])) { ok = false; break; }
+        any = true;
+      }
+      if (ok && any) return s;
+    }
+    return -1;
+  }
+
+  function askColumn(p, ci, order, onDelta) {
+    var N = p.plan.rows.length;
+    var rowsIdx = [];
+    for (var ri = 0; ri < N; ri++) {
+      if (p.headerRows && p.headerRows.indexOf(ri) >= 0) continue;   // 表头行整行不要
+      if ((p.ink[ci][ri] || 0) >= EMPTY_INK) rowsIdx.push(ri);
+    }
+    var K = rowsIdx.length;
+    if (!K) {
+      log('  · 第 ' + (ci + 1) + ' 列整列都是空格，跳过');
+      return Promise.resolve({ names: new Array(N).fill('-'), raw: '', retried: false, K: 0 });
+    }
+    var strip = stripOf(p, ci, rowsIdx);
+    var content = [
+      { type: 'text', text: promptFor(K, N, p.plan.cols.length, ci) },
+      { type: 'image_url', image_url: { url: strip.url, detail: 'high' } }
+    ];
+    var note = function (m) { log('  ' + m); };
+    var attempts = 0;
+    function attempt() {
+      attempts++;
+      return chatFallback(order, content, note).then(function (out) {
+        var got = cleanLines(out);
+        /* 整列全空 = 明显不对（模型偶发抽风，实测「行情9月14日」第 1 列整列读成 -，
+           而图里明明 40 行都有字）。换个模型再来，最多 3 次。 */
+        var allEmpty = got.length > 3 && got.every(function (s) { return s === '-' || s === ''; });
+        if (allEmpty && attempts < 3) {
+          log('  · 第 ' + (ci + 1) + ' 列整列读成了空（明显不对），换下一个模型再试');
+          order = order.slice(1).concat(order.slice(0, 1));
+          return attempt();
+        }
+        if (got.length !== K && attempts < 2) {
+          log('  · 第 ' + (ci + 1) + ' 列输出 ' + got.length + ' 行（应为 ' + K + '），再问一次');
+          content[0].text += '\n【重要】上一次你输出了 ' + got.length + ' 行，必须正好 ' + K +
+                             ' 行。图里从上到下就是 ' + K + ' 格，一格一行，重新输出一遍。';
+          return attempt();
+        }
+        return { out: out, got: got, ok: got.length === K };
+      });
+    }
+    return attempt().then(function (r) {
+      /* 按位置回填：图里第 k 行 = 照片里 rowsIdx[k] 行 */
+      var full = new Array(N).fill('-');
+      for (var k = 0; k < Math.min(r.got.length, K); k++)
+        full[rowsIdx[k]] = HEADER_RE.test(r.got[k]) ? '-' : r.got[k];
+      var res = { names: full, raw: r.out, retried: attempts > 1, K: K, short: !r.ok };
+      /* 开头核对：只对"照片行 0,1,2 都在图里"的列做（有整行被剔掉时不适用） */
+      var contig = rowsIdx.length >= 3 && rowsIdx[0] === 0 &&
+                   rowsIdx[1] === 1 && rowsIdx[2] === 2;
+      if (!contig || r.got.length < 3) return Promise.resolve(res);
+      return verifyHead(p, ci).then(function (v) {
+        if (!v || !v.length) return res;
+        var s = headShift(v, r.got);
+        if (s > 0) {
+          log('  · 第 ' + (ci + 1) + ' 列开头跳了 ' + s + ' 行（说明文字被当成非商品），搬回来');
+          var full2 = new Array(N).fill('-');
+          for (var k2 = 0; k2 < Math.min(r.got.length, K); k2++) {
+            var at = rowsIdx[s + k2];
+            if (at != null) full2[at] = HEADER_RE.test(r.got[k2]) ? '-' : r.got[k2];
+          }
+          res.names = full2;
+        }
+        return res;
+      }).catch(function () { return res; });   // 核对失败就按原来的用，不拦路
+    });
+  }
+
+  var ABORT = null;
+  /* 表头/日期行不是商品 —— 8月14日、价目表、商品名称 这种直接清掉 */
+  var HEADER_RE = /^\d{1,2}\s*月\s*\d{1,2}\s*日?$|^日期$|^日\s*期$|^(商品)?名\s*称$|^价目表?$|^品名$|^单价$|^批发价$/;
+
+  function runPhoto(p, onlyBad, onlyCols) {
+    var want = [];
+    for (var i = 0; i < p.cols.length; i++) {
+      if (onlyCols && onlyCols.length && onlyCols.indexOf(i) < 0) continue;
+      if (onlyBad && (p.cols[i].state === 'ok' || p.cols[i].state === 'fixed')) continue;
+      want.push(i);
+    }
+    if (!want.length) { return Promise.resolve(p); }
+    var sel = $('#msel').value || 'auto';
+    var order = modelOrder();
+    p.state = 'busy';
+    return want.reduce(function (chain, ci) {
+      return chain.then(function () {
+        if (ABORT) throw ABORT;
+        $('#progress').textContent = '正在认「' + p.name + '」第 ' + (ci + 1) + '/' + p.cols.length + ' 列…';
+        var t0 = Date.now();
+        return askColumn(p, ci, order).then(function (r) {
+          var N = p.plan.rows.length;
+          p.cols[ci] = {
+            names: r.names, raw: r.raw, K: r.K,
+            state: r.short ? 'bad' : 'ok', n: r.names.length, short: r.short
+          };
+          log('  ✓ 第 ' + (ci + 1) + ' 列读完：' + (Date.now() - t0) / 1000 + ' 秒，认 ' +
+              r.K + '/' + N + ' 行' + (r.short ? '（⚠ 数量没对上，要人工看）' : '') +
+              (r.retried ? '（重问了一次）' : ''));
+          renderAll();
+          return sleep(150);
+        }).catch(function (e) {
+          var msg = (e && e.message) || String(e);
+          if (msg === 'QUOTA') {
+            ABORT = new Error('大模型配额用完了（连续 ' + QUOTA_MAX + ' 个模型都报 429）。' +
+              '页面上所有模型都试过了 —— 只能等配额恢复，' +
+              '或者别选那张照片。已认的列都留着，稍后点「只重认没认好的」继续。');
+            log('✗ ' + ABORT.message);
+            throw ABORT;
+          }
+          p.cols[ci] = { names: null, raw: '', state: 'err', err: msg };
+          log('  ✗ 第 ' + (ci + 1) + ' 列失败：' + msg);
+          renderAll();
+        });
+      });
+    }, Promise.resolve()).catch(function (e) {
+      if (e === ABORT) return p;
+      throw e;
+    }).then(function () {
+      p.state = 'named';
+      $('#progress').textContent = '';
+      renderAll();
+      return p;
+    });
+  }
+
+  /* ------------------------------------------------------------ 表包 */
+
+  async function buildPack(p, name) {
+    var out = [], missed = 0;
+    for (var ci = 0; ci < p.cols.length; ci++) {
+      var col = p.cols[ci];
+      if (!col || !col.names) continue;
+      for (var ri = 0; ri < col.names.length; ri++) {
+        var nm = String(col.names[ri] || '').trim();
+        if (!nm || nm === '-' || nm === '—') continue;
+        var cell = await cellOf(p, ci, ri);
+        out.push({ n: nm, c: ci + 1, r: ri + 1, w: cell.w, h: cell.h, img: cell.img });
+      }
+    }
+    var sheet = canvasOf(Math.min(p.cv.width, 1100), Math.round(p.cv.height * Math.min(1, 1100 / p.cv.width)));
+    var sc = sheet.getContext('2d');
+    sc.fillStyle = '#fff'; sc.fillRect(0, 0, sheet.width, sheet.height);
+    sc.drawImage(p.cv, 0, 0, sheet.width, sheet.height);
+    var sbytes = await CIGCROP.encodePNG(sc.getImageData(0, 0, sheet.width, sheet.height).data, sheet.width, sheet.height);
+    return {
+      fmt: PACK_FMT, v: PACK_V,
+      table: {
+        id: name, name: name, date: '', note: '',
+        colLabels: p.plan.cols.map(function (_, i) { return '第' + (i + 1) + '列'; }),
+        nCol: p.plan.cols.length, nRow: p.plan.rows.length,
+        rot: p.plan.ang, src: 'ocr',
+        sheetImg: 'data:image/png;base64,' + b64(sbytes),
+        items: out
+      }
+    };
+  }
+
+  function download(name, text) {
+    var blob = new Blob([text], { type: 'application/json' });
+    var a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = name + '.cigtable.json';
+    document.body.appendChild(a); a.click();
+    setTimeout(function () { URL.revokeObjectURL(a.href); a.remove(); }, 4000);
+  }
+
+  /* ------------------------------------------------------------ 渲染 */
+
+  function renderAll() {
+    renderThumbs(); renderEdits(); renderExport(); renderStatus();
+  }
+
+  function renderStatus() {
+    var done = 0, tot = 0, bad = 0;
+    PHOTOS.forEach(function (p) {
+      if (p.state !== 'grid' && p.state !== 'named') return;
+      tot += p.cols.length;
+      p.cols.forEach(function (c) {
+        if (c.state === 'ok' || c.state === 'fixed') done++;
+        else if (c.state === 'err' || c.state === 'bad') bad++;
+      });
+    });
+    var s = $('#rstat');
+    s.textContent = tot ? ('认完 ' + done + '/' + tot + ' 列' + (bad ? '，' + bad + ' 列要人工看' : '')) : '待认';
+    s.className = 'tag' + (bad ? ' warn' : (done && done === tot ? ' ok' : ''));
+    $('#pstat').textContent = PHOTOS.length ? PHOTOS.length + ' 张照片' : '还没选';
+    $('#pstat').className = 'tag' + (PHOTOS.some(function (p) { return p.state === 'err'; }) ? ' err' : '');
+  }
+
+  function renderThumbs() {
+    var host = $('#thumbs'); host.innerHTML = '';
+    PHOTOS.forEach(function (p) {
+      if (!p.plan) return;
+      var scale = 96 / Math.max(p.cv.width, p.cv.height);
+      var w = Math.round(p.cv.width * scale), h = Math.round(p.cv.height * scale);
+      var c = canvasOf(w, h), cx = c.getContext('2d');
+      cx.drawImage(p.cv, 0, 0, w, h);
+      cx.strokeStyle = 'rgba(200,30,30,.75)'; cx.lineWidth = 1;
+      var k = scale;
+      p.plan.cols.forEach(function (cd) {
+        cx.strokeRect(Math.round(cd[0] * k) + .5, .5, Math.round((cd[1] - cd[0]) * k), h - 1);
+      });
+      p.plan.rows.forEach(function (rd) {
+        cx.beginPath();
+        cx.moveTo(.5, Math.round(rd[0] * k) + .5); cx.lineTo(w - .5, Math.round(rd[0] * k) + .5);
+        cx.stroke();
+      });
+      c.title = p.name;
+      host.appendChild(c);
+    });
+  }
+
+  function renderEdits() {
+    var ready = PHOTOS.filter(function (p) { return p.cols.some(function (c) { return c.names; }); });
+    $('#editcard').style.display = ready.length ? '' : 'none';
+    var host = $('#edits'); host.innerHTML = '';
+    ready.forEach(function (p) {
+      var box = document.createElement('div');
+      box.className = 'card';
+      box.style.border = 'none'; box.style.padding = '0 0 6px';
+      var N = p.plan.rows.length;
+      var h = document.createElement('h3');
+      h.textContent = p.name + '　' + p.plan.cols.length + ' 列 × ' + N + ' 行';
+      box.appendChild(h);
+      var grid = document.createElement('div'); grid.className = 'colgrid';
+      p.cols.forEach(function (c, ci) {
+        if (!c.names) return;
+        var cell = document.createElement('div'); cell.className = 'cellbox';
+        var cnt = c.names.filter(function (x) { return x && x !== '-' && x !== '—'; }).length;
+        var hd = document.createElement('div'); hd.className = 'hd';
+        hd.innerHTML = '<span>第 ' + (ci + 1) + ' 列</span><span>' + cnt + ' 个商品</span>';
+        cell.appendChild(hd);
+        var ta = document.createElement('textarea');
+        ta.value = c.names.join('\n');
+        ta.addEventListener('input', function () {
+          var lines = ta.value.split('\n');
+          while (lines.length < N) lines.push('-');
+          c.names = lines; c.state = 'fixed';
+          var n2 = lines.filter(function (x) { return x && x.trim() && x.trim() !== '-'; }).length;
+          hd.innerHTML = '<span>第 ' + (ci + 1) + ' 列' + (lines.length !== N ? ' ⚠' + lines.length + '/' + N + ' 行' : '') +
+                         '</span><span>' + n2 + ' 个商品</span>';
+          renderExport();
+        });
+        cell.appendChild(ta);
+        grid.appendChild(cell);
+      });
+      box.appendChild(grid);
+      host.appendChild(box);
+    });
+  }
+
+  function renderExport() {
+    var ready = PHOTOS.filter(function (p) { return p.cols.some(function (c) { return c.names; }); });
+    $('#expcard').style.display = ready.length ? '' : 'none';
+    var host = $('#expform');
+    // 保留已填的表名
+    var keep = {};
+    host.querySelectorAll('input[data-pid]').forEach(function (i) { keep[i.getAttribute('data-pid')] = i.value; });
+    host.innerHTML = '';
+    ready.forEach(function (p) {
+      var wrapdiv = document.createElement('div');
+      wrapdiv.style.marginBottom = '8px';
+      var lb = document.createElement('div');
+      lb.className = 'note'; lb.textContent = p.name + ' → 导出的表名';
+      var inp = document.createElement('input');
+      inp.type = 'text'; inp.setAttribute('data-pid', p.id);
+      inp.value = keep[p.id] != null ? keep[p.id] : p.name;
+      wrapdiv.appendChild(lb); wrapdiv.appendChild(inp);
+      host.appendChild(wrapdiv);
+    });
+    $('#exphint').innerHTML = '导出后在 App 的「管理」页点「导入表包」选它。<b>表名跟已有表一样 = 更新那张表</b>。';
+  }
+
+  /* ------------------------------------------------------------ 交互 */
+
+  /* ------------------------------------------------------------ 引擎 UI */
+
+  function readEngineForm() {
+    ENG.base = $('#abase').value.trim();
+    /* 密钥要掐掉首尾和中间的空白 —— 从别处复制常常会带空格或换行。
+       ⚠️ 不掐的话 fetch 会直接抛「String contains non-ISO-8859-1 code point」，
+          那是浏览器在抱怨 header 里有非法字符，普通人根本看不懂什么意思。 */
+    ENG.key = $('#akey').value.replace(/\s+/g, '');
+    ENG.models = splitModels($('#amodel').value);
+    saveEngine();
+    var p = $('#urlprev');
+    try { p.textContent = '实际请求：' + apiUrl(ENG.base); }
+    catch (e) { p.textContent = String(e.message || e); }
+    $('#engstat').textContent = '自带 API · ' + (ENG.models.length ? ENG.models.join(' / ') : '还没填模型名');
+  }
+
+  function setEngineMode() {
+    $('#engform').style.display = ENG.mode === 'custom' ? '' : 'none';
+    Array.prototype.forEach.call(document.querySelectorAll('input[name=eng]'), function (r) {
+      r.checked = (r.value === ENG.mode);
+    });
+  }
+
+  function wireEngine() {
+    loadEngine();
+    $('#abase').value = ENG.base || '';
+    $('#akey').value = ENG.key || '';
+    $('#amodel').value = (ENG.models || []).join(', ');
+    if (ENG.mode === 'custom') {
+      /* 有配置时自动带上上一次用的厂商标记（只是好看，不重要） */
+      var hit = Array.prototype.find.call($('#epreset').options, function (o) { return o.value && o.value === ENG.base; });
+      if (hit) $('#epreset').value = hit.value;
+    }
+    setEngineMode();
+    readEngineForm();
+
+    Array.prototype.forEach.call(document.querySelectorAll('input[name=eng]'), function (r) {
+      r.onchange = function () {
+        ENG.mode = r.value;
+        saveEngine(); setEngineMode();
+        if (ENG.mode === 'custom') ensureModels().catch(function () { });
+      };
+    });
+    /* 换厂商：填地址顺带推荐一个当前还在用的模型；火山方舟要填自己的接入点 ID，没法推荐 */
+    $('#epreset').onchange = function () {
+      var o = this.options[this.selectedIndex];
+      if (!this.value) return;
+      $('#abase').value = this.value;
+      if (!$('#amodel').value.trim() && o.dataset.model) $('#amodel').value = o.dataset.model;
+      readEngineForm();
+    };
+    ['abase', 'akey', 'amodel'].forEach(function (id) { $('#' + id).oninput = readEngineForm; });
+    $('#bshowkey').onclick = function () {
+      var k = $('#akey');
+      k.type = k.type === 'password' ? 'text' : 'password';
+      this.textContent = k.type === 'password' ? '显示' : '隐藏';
+    };
+    $('#bclearkey').onclick = function () {
+      $('#akey').value = ''; ENG.key = ''; saveEngine();
+      try { localStorage.removeItem(KEY_STORE); } catch (e) { }
+      $('#engstat').textContent = '密钥已清除（刷新后配置也没了）';
+    };
+    $('#btest').onclick = testEngine;
+    $('#bfetch').onclick = fetchModels;
+    $('#mlist').onchange = function () {
+      if (!this.value) return;
+      $('#amodel').value = this.value;
+      readEngineForm();
+    };
+  }
+
+  /* 拉一下这家都有哪些模型。模型名是会变的（2026-09-25：硅基流动上
+     Qwen2.5-VL-32B 已标 Deprecated），猜名字不如让接口告诉你。
+     ⚠️ 这个 /models 接口各家都要带密钥（硅基流动、OpenAI 都是）。 */
+  function fetchModels() {
+    readEngineForm();
+    var btn = $('#bfetch'), st = $('#tstat');
+    btn.disabled = true; st.textContent = '拉取中…';
+    var base = String(ENG.base || '').trim().replace(/\/+$/, '');
+    if (!/\/v\d+[a-z0-9.]*$/.test(base)) base += '/v1';
+    return fetch(base + '/models', {
+      headers: { 'Authorization': 'Bearer ' + ENG.key }
+    }).then(function (r) {
+      return r.text().then(function (t) {
+        var j = null; try { j = JSON.parse(t); } catch (e) { }
+        if (!r.ok) throw new Error(String(r.status) + ' ' +
+          String((j && (j.message || (j.error && j.error.message))) || t.slice(0, 120)));
+        /* 同上：200 里带 code/message 表示其实是失败 */
+        if (j && !j.data && (j.code || j.message || j.error)) {
+          throw new Error(String((j.error && (j.error.message || j.error.code)) || j.message || j.code));
+        }
+        var arr = (j && j.data) || (Array.isArray(j) ? j : []);
+        var ids = arr.map(function (m) { return typeof m === 'string' ? m : (m.id || m.name || ''); })
+          .filter(Boolean);
+        if (!ids.length) throw new Error('这个接口没列出模型：' + t.slice(0, 120));
+        /* 能看图的排前面 —— 认字必须要多模态 */
+        var V = /vl|vision|4v|gv|visual|omni|image/i;
+        ids.sort(function (a, b) { return (V.test(b) ? 1 : 0) - (V.test(a) ? 1 : 0) || a.localeCompare(b); });
+        var sel = $('#mlist');
+        sel.innerHTML = '';
+        ids.forEach(function (id) {
+          var o = document.createElement('option'); o.value = id; o.textContent = id; sel.appendChild(o);
+        });
+        sel.style.display = '';
+        $('#mlistrow').style.display = '';
+        if (!$('#amodel').value.trim()) { $('#amodel').value = ids[0]; readEngineForm(); }
+        st.textContent = '✓ 共 ' + ids.length + ' 个模型，带 VL/Vision 的在最上面（已替你挑了 ' + ids[0] + '）';
+        log('· 模型列表：' + ids.slice(0, 8).join(', ') + (ids.length > 8 ? ' …' : ''));
+      });
+    }).catch(function (e) {
+      var m = (e && e.message) || String(e);
+      st.textContent = '✗ 拉不到：' + m + '（模型名可以直接手填）';
+      log('✗ 拉模型列表失败：' + m);
+    }).then(function () { btn.disabled = false; });
+  }
+
+  /* 拿一张写着字的合成小图试一次：接口通不通、能不能看图、模型名对不对 */
+  function testEngine() {
+    readEngineForm();
+    var btn = $('#btest'), st = $('#tstat');
+    btn.disabled = true; st.textContent = '测试中…';
+    var c = canvasOf(360, 90), x = c.getContext('2d');
+    x.fillStyle = '#fff'; x.fillRect(0, 0, 360, 90);
+    x.fillStyle = '#111'; x.font = 'bold 40px sans-serif'; x.textBaseline = 'middle';
+    x.fillText('6克双喜  220', 8, 45);
+    var content = [
+      { type: 'text', text: '图上左边的商品名是什么？只回答那几个字，不要解释。' },
+      { type: 'image_url', image_url: { url: c.toDataURL('image/png'), detail: 'high' } }
+    ];
+    var t0 = Date.now();
+    var order = ENG.models.length ? ENG.models : [''];
+    /* ⚠️ 要 return 这个 promise —— 探针在 await 它，丢了 return 会读到「测试中…」 */
+    return chatFallback(order, content, function (m) { log('  ' + m); }).then(function (out) {
+      var s = String(out || '').replace(/\s+/g, '');
+      st.textContent = (/双喜/.test(s) ? '✓ 通了' : '⚠ 有回应但读得不准：「' + s.slice(0, 24) + '」')
+        + '（' + ((Date.now() - t0) / 1000).toFixed(1) + ' 秒）';
+      log('· 接口测试：' + st.textContent + ' 原文「' + s.slice(0, 40) + '」');
+    }).catch(function (e) {
+      st.textContent = '✗ ' + ((e && e.message) || e);
+      log('✗ 接口测试失败：' + st.textContent);
+    }).then(function () { btn.disabled = false; });
+  }
+
+  function boot() {
+    if (!window.CIGCROP) { log('✗ 切图库没加载上'); return; }
+    log('就绪。' + (CIGCROP.hasDeflate() ? '' : '⚠ 这个浏览器没有 CompressionStream，切图会走兜底编码（图会大一些）'));
+    wireEngine();
+
+    if (IN_APP) appSkin();
+
+    $('#bpick').onclick = function () {
+      /* ★ App 里（被 srcdoc iframe 内嵌）自己点 file input 拉不起系统选择器 ——
+         WebView 不给子 frame 回调 onShowFileChooser（adb 真实点击实测也拉不起）。
+         所以请父页面代点：同源可以直接同步调它的函数，用户手势还在。 */
+      if (IN_APP) {
+        try { if (window.parent.__ocrPick) { window.parent.__ocrPick(); return; } } catch (e) { }
+        try { window.parent.postMessage({ ocrPick: 1 }, '*'); return; } catch (e) { }
+      }
+      $('#picker').click();
+    };
+    $('#picker').onchange = function (e) {
+      addFiles(e.target.files);
+      e.target.value = '';
+    };
+    /* 父页面代理选图的回传：拿到 File 之后走的是和本地选图完全同一条路 */
+    window.addEventListener('message', function (e) {
+      var d = e && e.data;
+      if (d && d.ocrFiles && d.ocrFiles.length) addFiles(d.ocrFiles);
+    });
+    var dz = $('#dz');
+    ['dragenter', 'dragover'].forEach(function (ev) {
+      dz.addEventListener(ev, function (e) { e.preventDefault(); dz.classList.add('on'); });
+    });
+    ['dragleave', 'drop'].forEach(function (ev) {
+      dz.addEventListener(ev, function (e) { e.preventDefault(); dz.classList.remove('on'); });
+    });
+    dz.addEventListener('drop', function (e) { if (e.dataTransfer) addFiles(e.dataTransfer.files); });
+
+    $('#brun').onclick = function () { runChecked(); };
+    $('#bretry').onclick = function () { runChecked(true); };
+    $('#bexport').onclick = function () { exportAll(); };
+    $('#bregrid').onclick = function () {
+      var old = PHOTOS.slice();
+      PHOTOS.length = 0;
+      log('— 重新认版面（' + old.length + ' 张）—');
+      old.reduce(function (ch, p) { return ch.then(function () { return addOne(p.file); }); },
+        Promise.resolve()).then(renderAll);
+    };
+
+    if (IN_APP) {                    // 让父页面把 iframe 撑到刚好一页，避免两层滚动条
+      var last = 0;
+      setInterval(function () {
+        var h = document.documentElement.scrollHeight;
+        if (Math.abs(h - last) > 8) { last = h; window.parent.postMessage({ ocrH: h + 40 }, '*'); }
+      }, 400);
+      appSkin();
+    }
+  }
+
+  /* 被 App 内嵌时的皮肤：改文案、默认展开「自带 API」配置 */
+  function appSkin() {
+    var b = $('#bexport'); if (b) b.textContent = '写进「烟价速查」App';
+    var h1 = document.querySelector('h1'); if (h1) h1.textContent = '认字 · 拍照做表包';
+    var sub = document.querySelector('.sub');
+    if (sub) sub.textContent = '认完点「写进 App」，直接进「管理」页。';
+    var step = document.querySelector('.steps li:last-child');
+    if (step) step.textContent = '点「写进 App」—— 同名表会原地更新价格';
+  }
+
+  function runChecked(onlyBad) {
+    ABORT = null;
+    ensureModels().then(function () {
+      return PHOTOS.reduce(function (ch, p) {
+        return ch.then(function () {
+          if (p.state !== 'grid' && p.state !== 'named') return;
+          return runPhoto(p, onlyBad);
+        });
+      }, Promise.resolve());
+    }).then(function () { log('=== 认字结束 ==='); })
+      .catch(function (e) { log('✗ ' + ((e && e.message) || e)); });
+  }
+
+  function exportAll() {
+    $('#bexport').disabled = true;
+    $('#estat').textContent = '正在切图…';
+    var ready = PHOTOS.filter(function (p) { return p.cols.some(function (c) { return c.names; }); });
+    ready.reduce(function (ch, p) {
+      return ch.then(function () {
+        var inp = document.querySelector('input[data-pid="' + p.id + '"]');
+        var name = (inp && inp.value.trim()) || p.name;
+        return buildPack(p, name).then(function (pack) {
+          if (!pack.table.items.length) { log('✗ ' + name + '：一个商品名都没有，跳过'); return; }
+          var txt = JSON.stringify(pack);
+          if (IN_APP) {
+            /* 直接交给 App：父页面收到后走它自己的 doImport（同名表 = 原地更新价格） */
+            window.parent.postMessage({ cigpack: txt, name: name, n: pack.table.items.length }, '*');
+            log('✓ 已写进 App：' + name + '（' + pack.table.items.length + ' 个商品）—— 回到「管理」页就能搜到');
+            $('#estat').textContent = '✓ 已写进 App（' + ready.length + ' 张表）';
+            return;
+          }
+          download(name, txt);
+          log('✓ 已导出 ' + name + '：' + pack.table.items.length + ' 个商品，' +
+              Math.round(txt.length / 1048576 * 100) / 100 + ' MB');
+          $('#estat').textContent = '导出 ' + ready.length + ' 个表包';
+          return sleep(600);
+        });
+      });
+    }, Promise.resolve()).then(function () {
+      $('#bexport').disabled = false;
+    }).catch(function (e) {
+      log('✗ 导出失败：' + ((e && e.message) || e));
+      $('#bexport').disabled = false;
+    });
+  }
+
+  /* ------------------------------------------------------------ 探针 API
+
+     离线自检（不联网、不烧配额）用这三个：
+       setTruth(pid, cols)  给第 pid 张照片灌名字（cols[col][row]），代替 AI
+       packSummary(pid)     按当前名字切图造表包，返回摘要（== 表包本体）
+       getPack(pid)         把完整表包 JSON 字符串挂到 window.__recog.lastPackJson
+     照片怎么进来的：探针用 CDP 的 DOM.setFileInputFiles 直接塞本地路径，
+     **不需要把原图传到线上**（店主的价目表照片不该出现在公网目录里）。            */
+
+  function photoOf(pid) {
+    for (var i = 0; i < PHOTOS.length; i++) if (PHOTOS[i].id === +pid) return PHOTOS[i];
+    return null;
+  }
+
+  function setTruth(pid, cols) {
+    var p = photoOf(pid);
+    if (!p || !p.plan) throw new Error('这张照片还没切出网格');
+    var N = p.plan.rows.length;
+    p.cols.forEach(function (c, ci) {
+      var src = (cols && cols[ci]) || [];
+      var arr = [];
+      for (var ri = 0; ri < N; ri++) {
+        var v = src[ri];
+        arr.push(v == null ? '-' : String(v));
+      }
+      c.names = arr; c.state = 'ok';
+    });
+    p.state = 'named';
+    renderAll();
+    return p.plan.cols.length + ' 列 × ' + N + ' 行';
+  }
+
+  function packSummary(pid, name) {
+    var p = photoOf(pid);
+    return buildPack(p, name || p.name).then(function (pack) {
+      var txt = JSON.stringify(pack);
+      window.__recog.lastPackJson = txt;
+      return {
+        fmt: pack.fmt, v: pack.v, name: pack.table.name,
+        nItems: pack.table.items.length,
+        nCol: pack.table.nCol, nRow: pack.table.nRow, rot: pack.table.rot,
+        bytes: txt.length,
+        names: pack.table.items.map(function (x) { return x.c + ',' + x.r + '=' + x.n; }),
+        firstImgOk: /^data:image\/png;base64,/.test(pack.table.items[0] && pack.table.items[0].img),
+        allImgOk: pack.table.items.every(function (x) { return /^data:image\/png;base64,/.test(x.img); }),
+        sheetOk: /^data:image\/png;base64,/.test(pack.table.sheetImg || '')
+      };
+    });
+  }
+
+  /* 探针脚本用的把手 */
+  window.__recog = {
+    stage: 'idle', photos: PHOTOS, logs: LOGS, err: null, lastPackJson: null,
+    addFiles: addFiles, runPhoto: runPhoto, setTruth: setTruth,
+    packSummary: packSummary, photoOf: photoOf, stripOf: stripOf,
+    /* 探针用：指定模型 / 只认某几列（下标从 0 起） */
+    setModel: function (id) {
+      PREF = id;
+      var s = $('#msel');
+      if (Array.prototype.some.call(s.options, function (o) { return o.value === id; })) s.value = id;
+      return PREF;
+    },
+    /* 探针用：切换成「自带 API」。key 只进 localStorage，不落别的地儿 */
+    setEngine: function (cfg) {
+      Object.assign(ENG, cfg || {});
+      ENG.models = Array.isArray(ENG.models) ? ENG.models : splitModels(ENG.models);
+      ENG.mode = 'custom';
+      saveEngine();
+      $('#abase').value = ENG.base || '';
+      $('#akey').value = ENG.key || '';
+      $('#amodel').value = (ENG.models || []).join(', ');
+      setEngineMode(); readEngineForm();
+      return { mode: ENG.mode, models: ENG.models, hasKey: !!ENG.key, base: ENG.base };
+    },
+    fetchModels: fetchModels, testEngine: testEngine,
+    runCols: function (pid, cols) {
+      return ensureModels().then(function () {
+        return runPhoto(photoOf(pid), false, cols);
+      });
+    },
+    colNames: function (pid, ci) {
+      var p = photoOf(pid); var c = p && p.cols[ci];
+      return c ? c.names : null;
+    }
+  };
+
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot);
+  else boot();
+})();
+</script>
+</body>
+</html>

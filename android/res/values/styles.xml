@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!--
+      浅色主题。
+      android:isLightTheme 是关键：WebView 用它来决定网页里
+      @media (prefers-color-scheme: dark) 报什么值。不写就等于系统说了算，
+      在「系统浅色 + App 深色」这类组合下会和网页自己的深色样式打架。
+      values-night/styles.xml 里有同一份，只是 isLightTheme=false。
+    -->
+    <style name="AppTheme" parent="@android:style/Theme.Material.Light.NoActionBar">
+        <item name="android:isLightTheme">true</item>
+        <item name="android:windowBackground">@color/win_bg</item>
+        <item name="android:colorBackground">@color/win_bg</item>
+        <item name="android:statusBarColor">@color/win_bg</item>
+        <item name="android:navigationBarColor">@color/win_bg</item>
+        <item name="android:windowLightStatusBar">true</item>
+    </style>
+</resources>

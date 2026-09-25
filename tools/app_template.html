@@ -1,0 +1,2233 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#b3261e">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="烟价速查">
+<title>烟价速查</title>
+<style>
+:root{
+  --bg:#f2f2f7; --card:#ffffff; --fg:#1c1c1e; --dim:#8e8e93; --line:rgba(60,60,67,.29);
+  --primary:#007aff; --primary-dim:rgba(0,122,255,.10); --chip:#e9e9eb;
+  --danger:#ff3b30; --ok:#34c759;
+  --warnbg:rgba(255,149,0,.14);  --warnln:rgba(255,149,0,.40); --warnfg:#9a6a00;
+  --okbg:rgba(52,199,89,.12);    --okln:rgba(52,199,89,.40);
+  --errbg:rgba(255,59,48,.10);   --errln:rgba(255,59,48,.35);
+}
+@media (prefers-color-scheme: dark){
+  :root{
+    --bg:#000000; --card:#1c1c1e; --fg:#ffffff; --dim:#98989f; --line:rgba(84,84,88,.65);
+    --primary:#0a84ff; --primary-dim:rgba(10,132,255,.18); --chip:#2c2c2e;
+    --danger:#ff453a; --ok:#30d158;
+    --warnbg:rgba(255,159,10,.18); --warnln:rgba(255,159,10,.45); --warnfg:#ffd60a;
+    --okbg:rgba(48,209,88,.18);    --okln:rgba(48,209,88,.50);
+    --errbg:rgba(255,69,58,.16);   --errln:rgba(255,69,58,.50);
+  }
+}
+:root{
+  --ios-font:-apple-system,BlinkMacSystemFont,"SF Pro Text","SF Pro Display","PingFang SC","Hiragino Sans GB","Microsoft YaHei","Helvetica Neue",Arial,sans-serif;
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html{-webkit-text-size-adjust:100%}
+body{
+  margin:0;background:var(--bg);color:var(--fg);
+  font:16px/1.5 var(--ios-font);
+  -webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility;
+  padding-bottom:calc(env(safe-area-inset-bottom) + 84px);
+}
+.wrap{max-width:880px;margin:0 auto;padding:0 16px}
+
+/* ---------- 顶栏（iOS 大标题 + 搜索胶囊） ---------- */
+header{
+  position:sticky;top:0;z-index:20;
+  background:color-mix(in srgb, var(--bg) 82%, transparent);
+  backdrop-filter:saturate(180%) blur(20px);-webkit-backdrop-filter:saturate(180%) blur(20px);
+  padding:calc(env(safe-area-inset-top) + 14px) 16px 10px;
+  border-bottom:1px solid var(--line);
+}
+/* 宽屏（平板/桌面）：顶栏内容与 880px 内容列对齐，背景保持通栏 */
+header .brand,header .searchbox{max-width:880px;margin:0 auto}
+.brand{padding:0 2px 10px}
+.brand h1{margin:0;font-size:30px;font-weight:700;letter-spacing:-.5px}
+.brand .sub{font-size:13px;color:var(--dim);margin-top:2px}
+.searchbox{padding:0}
+.searchbox .inp{
+  position:relative;display:flex;align-items:center;
+  background:var(--chip);border:0;border-radius:10px;
+  padding:0 36px 0 34px;transition:box-shadow .15s;
+}
+.searchbox .inp:focus-within{box-shadow:0 0 0 1.5px var(--primary)}
+.searchbox .inp .ic{position:absolute;left:11px;font-size:15px;color:var(--dim)}
+#q{
+  flex:1;border:0;outline:0;background:transparent;color:var(--fg);
+  font-size:17px;padding:10px 0;min-width:0;font-family:inherit;
+}
+#q::placeholder{color:var(--dim);font-size:16px}
+/* type=search 自带原生清除叉，与自定义 #clr 重复 → 隐藏原生 */
+#q::-webkit-search-cancel-button,#q::-webkit-search-decoration{-webkit-appearance:none;appearance:none;display:none}
+#clr{
+  position:absolute;right:5px;border:0;background:var(--dim);color:#fff;
+  width:20px;height:20px;border-radius:50%;font-size:12px;line-height:20px;cursor:pointer;display:none;
+}
+#clr.on{display:block}
+
+/* ---------- 底部标签栏（iOS tab bar） ---------- */
+.tabs{
+  position:fixed;left:0;right:0;bottom:0;z-index:40;margin:0 auto;max-width:880px;
+  display:flex;gap:0;
+  padding:6px 6px calc(env(safe-area-inset-bottom) + 6px);
+  background:color-mix(in srgb, var(--card) 80%, transparent);
+  backdrop-filter:saturate(180%) blur(20px);-webkit-backdrop-filter:saturate(180%) blur(20px);
+  border-top:1px solid var(--line);
+}
+.tabs button{
+  flex:1;border:0;background:transparent;color:var(--dim);
+  font-family:inherit;font-size:10px;font-weight:500;letter-spacing:.3px;
+  padding:4px 0 2px;cursor:pointer;
+  display:flex;flex-direction:column;align-items:center;gap:3px;
+}
+.tabs button .ic{font-size:22px;line-height:1;filter:grayscale(1);opacity:.55}
+.tabs button.on{color:var(--primary)}
+.tabs button.on .ic{filter:none;opacity:1}
+
+/* ---------- 面板 ---------- */
+.panel{display:none;padding:14px 0 8px}
+.panel.on{display:block}
+.hint{font-size:13px;color:var(--dim);padding:2px 2px 12px;line-height:1.6}
+.count{font-size:13px;color:var(--dim);padding:6px 2px 8px;display:flex;justify-content:space-between}
+.chips{display:flex;flex-wrap:wrap;gap:8px;padding:2px 0 8px}
+.chips b{
+  font-weight:500;font-size:14px;background:var(--chip);border:0;
+  color:var(--fg);padding:8px 14px;border-radius:999px;cursor:pointer;
+}
+.chips b:active{background:var(--primary);color:#fff}
+
+/* ---------- 表筛选（iOS 胶囊） ---------- */
+.tf{display:flex;flex-wrap:wrap;align-items:center;gap:8px;padding:2px 0 14px}
+.tf b{
+  font-weight:500;font-size:13px;color:var(--fg);background:var(--chip);
+  border:0;padding:7px 13px;border-radius:999px;cursor:pointer;
+  white-space:nowrap;line-height:1.4;
+}
+.tf b.on{background:var(--primary);color:#fff;font-weight:600}
+.tf .tfl{font-size:13px;color:var(--dim);padding-right:2px}
+
+/* ---------- 结果卡片 ---------- */
+.card{
+  display:block;width:100%;text-align:left;border:0;padding:0;margin:0 0 14px;cursor:pointer;
+  background:var(--card);border-radius:14px;overflow:hidden;
+  box-shadow:0 1px 2px rgba(0,0,0,.04),0 8px 24px -16px rgba(0,0,0,.3);
+}
+.card:active{transform:scale(.992)}
+.card .shot{position:relative;display:block;background:#fff;overflow:hidden;line-height:0}
+.card .shot img{display:block;width:100%;height:auto;max-width:100%;object-fit:contain}
+.card .meta{display:flex;align-items:center;gap:8px;padding:10px 14px;border-top:1px solid var(--line)}
+.card .nm{font-size:16px;font-weight:600;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.card .nm mark{background:transparent;color:var(--primary);font-weight:800}
+.card .pos{font-size:12px;color:var(--dim);white-space:nowrap;background:var(--chip);padding:3px 9px;border-radius:999px}
+.card .tb{
+  font-size:11px;color:var(--primary);background:var(--primary-dim);font-style:normal;font-weight:600;
+  padding:3px 9px;border-radius:999px;white-space:nowrap;flex:none;
+}
+.empty{text-align:center;color:var(--dim);padding:48px 16px;font-size:15px;line-height:1.6}
+.empty .btnwide{
+  display:inline-block;margin-top:14px;background:var(--primary);color:#fff;border:0;
+  font-family:inherit;font-size:14px;font-weight:600;padding:11px 20px;
+  border-radius:11px;cursor:pointer;
+}
+.empty .btnwide:active{opacity:.85}
+
+/* ---------- 全部（按列） ---------- */
+.tf:empty{display:none}
+.tsec{margin-bottom:20px}
+.tsec + .tsec{border-top:1px solid var(--line);padding-top:18px}
+.thead{
+  font-size:20px;font-weight:700;padding:2px 2px 12px;display:flex;align-items:center;gap:8px;
+}
+.thead .tag{font-size:11px;color:var(--primary);background:var(--primary-dim);border-radius:999px;padding:2px 9px;font-weight:600}
+.grp{background:var(--card);border-radius:14px;margin-bottom:14px;overflow:hidden;box-shadow:0 1px 2px rgba(0,0,0,.04)}
+.grp>summary{
+  list-style:none;padding:14px;font-size:15px;font-weight:600;cursor:pointer;
+  display:flex;align-items:center;gap:8px;user-select:none;
+}
+.grp>summary::-webkit-details-marker{display:none}
+.grp>summary .tag{font-size:11px;color:var(--primary);background:var(--primary-dim);border-radius:999px;padding:2px 9px;font-weight:600}
+.grp>summary .arrow{margin-left:auto;color:var(--dim);font-size:13px;transition:transform .2s}
+.grp[open]>summary .arrow{transform:rotate(90deg)}
+.items{display:flex;flex-wrap:wrap;gap:8px;padding:4px 14px 16px}
+.items span{
+  font-size:14px;background:var(--chip);border-radius:9px;padding:7px 11px;cursor:pointer;color:var(--fg);
+}
+.items span:active{background:var(--primary);color:#fff}
+
+/* ---------- 原表 ---------- */
+.sheetbar{display:flex;align-items:center;gap:8px;padding:0 0 12px}
+.sheetbar button{
+  border:0;background:var(--chip);color:var(--fg);font-family:inherit;
+  font-size:14px;padding:8px 15px;border-radius:10px;cursor:pointer;
+}
+.sheetbar button:active{background:var(--primary);color:#fff}
+.sheetbar .lv{margin-left:auto;font-size:13px;color:var(--dim)}
+.sheetbox{
+  background:var(--card);border-radius:14px;overflow:auto;max-height:70vh;
+  box-shadow:0 1px 2px rgba(0,0,0,.04);-webkit-overflow-scrolling:touch;
+}
+.sheetbox img{display:block;background:#fff}
+
+/* ---------- 管理（导入新表 / 删除旧表） ---------- */
+.mgrbar{display:flex;align-items:center;gap:10px;padding:2px 0 16px}
+.impbtn{
+  display:inline-flex;align-items:center;gap:6px;flex:none;
+  background:var(--primary);color:#fff;
+  font-size:14px;font-weight:600;padding:11px 17px;border-radius:11px;cursor:pointer;
+}
+.impbtn:active{opacity:.85}
+/* 次要按钮：**刻意比 .impbtn 矮**（padding 9 vs 11、字号 13 vs 14），
+   这样 .mgrbar 的高度仍由 .impbtn 决定，加它不会推下下面的表清单。 */
+.newbtn{
+  display:inline-flex;align-items:center;gap:4px;flex:none;
+  background:var(--chip);color:var(--primary);
+  font-size:13px;font-weight:600;padding:9px 13px;border-radius:11px;cursor:pointer;
+}
+.newbtn:active{opacity:.7}
+.mgrbar .sp{flex:1}
+.mgrbar .stat{font-size:12px;color:var(--dim);text-align:right;line-height:1.5;flex:none}
+.mgrh{font-size:13px;color:var(--dim);padding:4px 2px 10px}
+.trow{
+  display:flex;align-items:center;gap:10px;background:var(--card);border-radius:14px;
+  padding:13px 14px;margin-bottom:10px;box-shadow:0 1px 2px rgba(0,0,0,.04);
+}
+.trow.off{opacity:.55}
+.trow .tl{flex:1;min-width:0}
+.trow .tn{font-size:16px;font-weight:600;display:flex;align-items:center;gap:7px;flex-wrap:wrap}
+.trow .tn i{font-style:normal;font-size:12px;color:var(--dim);font-weight:400}
+.trow .tm{font-size:12px;color:var(--dim);padding-top:4px;display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+.trow .src{font-style:normal;font-size:11px;font-weight:600;color:var(--dim);background:var(--chip);padding:2px 8px;border-radius:999px}
+.trow .src.im{color:var(--primary);background:var(--primary-dim)}
+/* iOS 列表行内的操作按钮：纯文字按钮（无边框），靠颜色区分主次，比一堆描边胶囊清爽得多。 */
+.trow button{
+  flex:none;border:0;background:transparent;color:var(--primary);
+  font-family:inherit;font-size:14px;font-weight:500;padding:8px 12px;border-radius:9px;cursor:pointer;
+}
+.trow button:active{background:var(--chip)}
+.trow .del,.trow .purge{color:var(--danger)}
+.trow .res,.trow .photo{color:var(--primary)}
+.trow .ren{color:var(--fg)}
+/* 点过一次、正在等第二次确认：加粗（不靠颜色深浅，深浅主题都看得清）。 */
+.trow .purge.arm{border:2px solid var(--danger);font-weight:700;padding:6px 10px}
+.trow .ops{display:flex;gap:4px;flex:none}
+.trow .ops button{padding:8px 11px;font-size:13px;white-space:nowrap}
+.trow .ops .undo{color:var(--fg)}
+/* 「套用名字」单独占一行：塞进右边那排按钮会把表名挤成竖列（360dp 屏只剩 70dp 给它）。
+   只在"照片加的表 + 格子还是编号 + 本机有版式一样的表"时才出现。 */
+.trow .inhrow{padding-top:4px}
+.trow .inhrow button{
+  width:100%;text-align:left;color:var(--primary);
+  background:var(--primary-dim);font-weight:600;border-radius:9px;padding:10px 12px;
+}
+.blank{color:var(--warnfg)}
+
+/* ---------- 换照片时的进度遮罩 ---------- */
+#busy{
+  position:fixed;inset:0;z-index:80;background:rgba(0,0,0,.4);
+  display:none;align-items:center;justify-content:center;padding:24px;
+}
+#busy.on{display:flex}
+#busy .box{
+  background:var(--card);border-radius:14px;padding:20px 22px 18px;width:min(340px,100%);
+  box-shadow:0 12px 40px rgba(0,0,0,.25);
+}
+#busy .bt{font-size:15px;font-weight:600;margin-bottom:11px}
+#busy .bar{height:6px;border-radius:99px;background:var(--chip);overflow:hidden;margin-bottom:10px}
+#busy .bar i{display:block;height:100%;width:0;background:var(--primary);transition:width .12s linear}
+#busy .bd{font-size:12.5px;color:var(--dim);line-height:1.6}
+
+/* ---------- 通用输入框（起表名 / 给商品改名） ---------- */
+#askname{
+  position:fixed;inset:0;z-index:82;background:rgba(0,0,0,.4);
+  display:none;align-items:center;justify-content:center;padding:24px;
+}
+#askname.on{display:flex}
+#askname .box{
+  background:var(--card);border-radius:14px;padding:20px 22px 18px;width:min(340px,100%);
+  box-shadow:0 12px 40px rgba(0,0,0,.25);
+}
+#askname .bt{font-size:17px;font-weight:700;margin-bottom:8px}
+#askname .bd{font-size:13px;color:var(--dim);line-height:1.6;margin-bottom:14px}
+#askname input{
+  width:100%;box-sizing:border-box;font-family:inherit;font-size:16px;
+  padding:12px 13px;border:1px solid var(--line);border-radius:11px;
+  background:var(--bg);color:var(--fg);outline:0;
+}
+#askname input:focus{border-color:var(--primary)}
+#askname .ops{display:flex;gap:10px;margin-top:16px}
+#askname .ops button{
+  flex:1;font-family:inherit;font-size:15px;padding:12px 0;border-radius:11px;cursor:pointer;
+  border:0;background:var(--chip);color:var(--fg);
+}
+#askname .ops button:active{opacity:.8}
+#askname .ops #askok{background:var(--primary);color:#fff;font-weight:600}
+.hsub{font-size:13px;color:var(--dim);padding:16px 2px 9px}
+/* 0 张表时才显示的顶部说明（见 #mgrempty 的注释） */
+#mgrempty{display:none}
+#mgrempty.on{display:block}
+.msg{display:none;font-size:13px;line-height:1.65;border-radius:12px;padding:11px 13px;margin-bottom:12px}
+.msg.on{display:block}
+.msg.ok{background:var(--okbg);border:1px solid var(--okln)}
+.msg.err{background:var(--errbg);border:1px solid var(--errln)}
+.msg.warn{background:var(--warnbg);border:1px solid var(--warnln)}
+#p-mgr.over{outline:2px dashed var(--primary);outline-offset:-8px;border-radius:16px}
+code{background:var(--chip);padding:1px 5px;border-radius:5px;font-size:12px;word-break:break-all}
+
+/* ---------- 全屏查看（iOS 大导航栏） ---------- */
+#viewer{
+  position:fixed;inset:0;z-index:60;background:var(--bg);display:none;flex-direction:column;
+}
+#viewer.on{display:flex}
+#viewer .vbar{
+  position:relative;display:flex;align-items:center;gap:8px;padding:calc(env(safe-area-inset-top) + 12px) 14px 12px;
+  border-bottom:1px solid var(--line);flex:none;
+}
+#viewer .vbar button{
+  border:0;background:transparent;color:var(--primary);font-family:inherit;font-size:16px;
+  padding:6px 8px;border-radius:8px;cursor:pointer;white-space:nowrap;
+}
+#viewer .vbar button:active{opacity:.6}
+#viewer .vbar .vttl{
+  flex:1;min-width:0;text-align:center;
+  font-size:17px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
+}
+#viewer .vbody{flex:1;overflow:auto;display:flex;align-items:flex-start;padding:18px 0;-webkit-overflow-scrolling:touch}
+#viewer .vbody img{display:block;width:100%;height:auto;background:#fff}
+#viewer .vfoot{
+  flex:none;padding:10px 14px calc(env(safe-area-inset-bottom) + 12px);
+  border-top:1px solid var(--line);display:flex;align-items:center;gap:8px;
+}
+#viewer .vfoot .vi{font-size:13px;color:var(--dim)}
+#viewer .vfoot button{
+  border:0;background:var(--chip);color:var(--fg);font-family:inherit;
+  font-size:14px;padding:9px 16px;border-radius:10px;cursor:pointer;
+}
+#viewer .vfoot button:active{background:var(--primary);color:#fff}
+#viewer .vfoot button:disabled{opacity:.35}
+#viewer .vfoot .sp{margin-left:auto}
+.tip{font-size:12px;color:var(--dim);text-align:center;padding:8px 14px 0;line-height:1.6}
+
+/* ---------- 数据同步卡片 ----------
+   这张卡用的 .note/.row/.sm/.pri/.tag 是老版式的类名，iOS 重写时只重写了别的块，
+   这几个类全没了 —— 整张卡在网页上裸奔：原生小输入框、挤成一排的小按钮
+   （2026-09-26 店主截图报「网页端排版好差」）。这里一次性补齐。 */
+#synccard{cursor:default;padding:16px}
+#synccard:active{transform:none}
+#synccard .note{font-size:13px;color:var(--dim);line-height:1.6}
+#synccard .row{display:flex;align-items:center;gap:8px}
+#synccard .tag{font-size:12px;color:var(--dim);font-weight:400}
+#synccard input[type=password],#synccard input:not([type]){
+  width:100%;font-family:inherit;font-size:16px;color:var(--fg);background:var(--bg);
+  border:1px solid var(--line);border-radius:10px;padding:10px 12px;outline:0;min-width:0;
+}
+#synccard input:focus{border-color:var(--primary);box-shadow:0 0 0 3px var(--primary-dim)}
+#synccard input::placeholder{color:var(--dim)}
+#synccard .sm{
+  border:0;font-family:inherit;font-size:14px;font-weight:600;cursor:pointer;
+  background:var(--chip);color:var(--fg);padding:10px 18px;border-radius:10px;
+}
+#synccard .sm:active{opacity:.75}
+#synccard .sm.pri{background:var(--primary);color:#fff}
+#synccard .sm:disabled{opacity:.45}
+#syncOn{width:17px;height:17px;accent-color:var(--primary);flex:none}
+/* 管理页表行里的商品数小徽章（<span class="tag">，老版式类名，同样补上） */
+.trow .tag{
+  font-style:normal;font-size:11px;font-weight:600;color:var(--dim);
+  background:var(--chip);padding:2px 8px;border-radius:999px;
+}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="brand">
+    <h1>烟价速查</h1>
+    <div class="sub" id="tsub"></div>
+  </div>
+  <div class="searchbox">
+    <div class="inp">
+      <span class="ic">🔍</span>
+      <input id="q" type="search" inputmode="search" autocomplete="off" autocorrect="off"
+             spellcheck="false" placeholder="输入商品名，如 玉溪 / 中华 / 万宝路">
+      <button id="clr" aria-label="清空">✕</button>
+    </div>
+  </div>
+</header>
+
+<div class="wrap">
+
+  <section id="p-search" class="panel on">
+    <div id="tfilter" class="tf"></div>
+    <div id="hot"></div>
+    <div class="count" id="cnt"></div>
+    <div id="res"></div>
+  </section>
+
+  <section id="p-all" class="panel">
+    <div class="hint" id="allhint">按原表的列分组。点任意商品名即可看图。</div>
+    <div id="groups"></div>
+  </section>
+
+  <section id="p-sheet" class="panel">
+    <div id="sfilter" class="tf"></div>
+    <div class="sheetbar">
+      <button id="zout">−</button>
+      <button id="zin">＋</button>
+      <button id="zfit">适应</button>
+      <span class="lv" id="lv">100%</span>
+    </div>
+    <div class="sheetbox" id="sheetbox">
+      <img id="sheetimg" alt="原始价目表">
+    </div>
+    <div class="tip">这就是手写的那张原表（已转正方向）。拖动查看，或点上方按钮缩放。</div>
+  </section>
+
+  <section id="p-mgr" class="panel">
+    <div class="hint" id="mgrhint">
+      <b>更新价格</b>：在表上点「换照片」；<b>加新表</b>：点「＋ 用照片加表」。<br>
+      <span style="color:var(--dim)">新表的商品名先是编号 —— 点开图「改名」，或出现「套用商品名」时一键全填。</span>
+    </div>
+    <!-- 0 张表时换成这块：上面那段在"没有表"时是空头支票（「换照片」按钮根本不在），
+         店主照着做只会满页面找，然后来问"怎么导入照片"（2026-09-24 真实发生）。 -->
+    <div class="hint" id="mgrempty">
+      <b>你现在一张表都没有，所以下面没有「换照片」按钮</b> —— 那个按钮是长在表上的。<br>
+      <b>起步就从这里：</b>点上面的「<b>＋ 用照片加表</b>」选一张价目表照片，几秒就有一张能翻的表。<br>
+      <span style="color:var(--dim)">App 不认字，读不出「茅台」这种商品名 —— 新表里的商品名先是编号，
+      所以搜不到具体商品。想让<b>整张表都能搜</b>：把照片发给助手做正式表包，
+      再用「＋ 导入表包」导进来（<b>一次能选多个</b>）；只让常卖的几个能搜：看图时点右上角「改名」。<br>
+      内置的「香烟」示例表已被「彻底删掉」，本机不再有；卸载重装会回到刚装好的样子。</span>
+    </div>
+    <div class="msg" id="mgrwarn"></div>
+    <div class="msg" id="mgrmsg"></div>
+    <div class="mgrbar">
+      <label class="impbtn">＋ 导入表包
+        <!-- accept 里带上 image/* 是刻意的：安卓文件选择器会按 accept 过滤，
+             不写的话店主在里面**根本看不到照片**，一选照片就成了"导入不了图片"。
+             选到照片也不再报错 —— acceptFiles 会把它转给「用照片加表」。 -->
+        <input id="impfile" type="file" accept=".json,.cigtable,application/json,image/*" multiple hidden>
+      </label>
+      <!-- 「用照片加表」= 店主不经过助手也能加一个新品类。
+           商品名先用「表名+序号」编着（App 不认字，读不出"茅台"），所以这样加的表
+           搜不到具体商品名，只能搜表名 + 翻网格；想要真名字，把照片发给助手做**同名**
+           表包，导入时会原地替换（表包 id 就是表名，见 doImport）。
+           ⚠️ 这个按钮必须比 .impbtn 矮，否则 .mgrbar 会长高、把下面所有按钮推下去
+           （坑 19：tap-points.json 里的坐标就全废了）。 -->
+      <label class="newbtn">＋ 用照片加表
+        <input id="newfile" type="file" accept="image/*" multiple hidden>
+      </label>
+      <span class="sp"></span>
+      <span class="stat" id="mgrstat"></span>
+    </div>
+    <div class="mgrh">当前的表（<span id="mgrn">0</span>）</div>
+    <div id="mgrlist"></div>
+    <div id="mgrhidden"></div>
+    <div class="tip">
+      「换照片」只换图，商品名沿用上一版；要是照片跟原来的表格式对不上（列数不同），
+      App 会拒绝并说明原因，那种情况需要助手重新做一次。<br>
+      删除内置表 = 先放进「已移除」，随时可恢复；在那儿再点一次「彻底删掉」才会永久消失。<br>
+      删除导入/换过照片的表 = 真的删掉本机存档；换过照片的还能在「撤销」里退回去。
+    </div>
+    <div class="card" id="synccard" style="margin-top:18px">
+      <div class="mgrh" style="margin:0 0 8px">数据同步（备份 / 多设备共用）</div>
+      <div class="note" style="margin-bottom:8px">把表备份到自托管的服务器，手机和电脑网页共用同一份数据。
+        <span id="syncsrc"></span></div>
+      <label class="tag" style="display:flex;align-items:center;gap:8px;margin:6px 0">
+        <input type="checkbox" id="syncOn"> 启用同步</label>
+      <div id="syncbox" style="display:none">
+        <div class="note" style="margin:6px 0 3px">服务器地址（网页版留空＝同一台服务器；App 里填 http(s)://域名 或 IP:端口）</div>
+        <input id="syncUrl" style="width:100%" placeholder="https://你的服务器:8080">
+        <div class="note" style="margin:8px 0 3px">用户名（第一次用先点「注册」，所有设备用同一组账号）</div>
+        <input id="syncUser" style="width:100%" placeholder="用户名，如 老板">
+        <div class="note" style="margin:8px 0 3px">密码（只存在这台机器上；局域网内自用，别用重要密码）</div>
+        <div class="row">
+          <input type="password" id="syncPass" style="flex:1;min-width:0" placeholder="密码（至少 4 位）">
+          <button class="sm" id="syncShowPass">显示</button>
+        </div>
+        <div class="row" style="margin-top:10px">
+          <button class="sm pri" id="syncNow">立即同步</button>
+          <button class="sm" id="syncReg">注册</button>
+          <span class="tag" id="syncStat"></span>
+        </div>
+        <div class="note" id="syncLast" style="margin-top:6px"></div>
+        <div class="note" style="margin-top:6px;color:var(--fg)">✓ 已开启自动同步：改动后约 5 秒自动上传，并每 60 秒拉取其它设备的改动，不用再手动点「立即同步」。</div>
+      </div>
+    </div>
+  </section>
+
+  <section id="p-ocr" class="panel">
+    <iframe id="ocrframe" title="认字"
+            style="width:100%;height:70vh;min-height:420px;border:0;display:block;
+                   border-radius:10px;background:#fff"></iframe>
+  </section>
+
+</div>
+
+<nav class="tabs" id="tabbar">
+  <button class="on" data-tab="p-search"><span class="ic">🔍</span><span>搜索</span></button>
+  <button data-tab="p-all"><span class="ic">▦</span><span>全部</span></button>
+  <button data-tab="p-sheet"><span class="ic">▤</span><span>原表</span></button>
+  <button data-tab="p-mgr"><span class="ic">⚙︎</span><span>管理</span></button>
+  <button data-tab="p-ocr"><span class="ic">✨</span><span>认字</span></button>
+</nav>
+
+<input id="shootfile" type="file" accept="image/*" hidden>
+<!-- 认字页（内嵌 iframe）的选图代理：iframe 里点 file input 拉不起系统选择器，
+     由主 frame 代点，再把 File 传进去（同源，File 可以直接结构化克隆）。 -->
+<input id="ocrfile" type="file" accept="image/*" multiple hidden>
+<div id="busy">
+  <div class="box">
+    <div class="bt" id="busyt">正在识别表格…</div>
+    <div class="bar"><i id="busybar"></i></div>
+    <div class="bd" id="busyd">把照片切成一个个商品格，稍等一下。</div>
+  </div>
+</div>
+
+<!-- 通用输入框。两处用：①「用照片加表」时起表名；② 看图时给某个商品改名。
+     不用原生 prompt() —— WebView 壳没实现 onJsPrompt 的话它会静默返回 null。 -->
+<div id="askname">
+  <div class="box">
+    <div class="bt" id="askttl"></div>
+    <div class="bd" id="askbd"></div>
+    <input id="askinp" type="text" maxlength="16" autocomplete="off" spellcheck="false">
+    <div class="ops">
+      <button id="askcancel">取消</button>
+      <button id="askok">好</button>
+    </div>
+  </div>
+</div>
+
+<div id="viewer">
+  <div class="vbar">
+    <button id="vclose">‹ 返回</button>
+    <div class="vttl" id="vttl"></div>
+    <button id="vrename">改名</button>
+    <button id="vzoom">放大</button>
+  </div>
+  <div class="vbody" id="vbody"><img id="vimg" alt=""></div>
+  <div class="vfoot">
+    <button id="vprev">‹ 上一个</button>
+    <span class="vi" id="vidx"></span>
+    <span class="sp"></span>
+    <button id="vnext">下一个 ›</button>
+  </div>
+</div>
+
+<script>
+/* ================== 切图算法 ==================
+   构建期由 tools/cropjs_src.js 整段注入（唯一源码，别在这里改）。
+   「换照片」能在 App 里跑，靠的就是它：网格线检测 → 列分组 → 逐格切图 → 编码 PNG。
+   ⚠️ 用函数形式 replace 注入，因为替换串里的 $ 在 String.replace 里是特殊字符。 */
+__CROPJS__
+
+/* ================== 数据 ==================
+   构建期注入 RAW.tables：每张表自带 items，和"表包"的结构完全一致 ——
+   所以内置表和导入表在下面走完全相同的渲染 / 搜索代码。
+   运行期拆成 TBL（可见表）/ IT（可见商品）；被移除的内置表记在本机存储里。 */
+const RAW = __DATA__;
+
+/* ---- 本机存储 ----
+   应用是从 file:// 打开的本地文件。实测 Edge/Chrome 下 IndexedDB 正常可用
+   （配额 10GB），所以导入的表能真正存住。万一某个浏览器不给用，
+   自动降级成"本次会话有效"并在管理页明确提示，而不是悄悄失效。 */
+const DB_NAME = 'cigpricer', DB_VER = 1;
+const LS_REMOVED = 'cigpricer.removed';
+const PACK_FMT = 'cigpricer.table', PACK_V = 1;
+/* 「换照片」前那份备份的 id 前缀。跟表共用 tables 这个 store，
+   所以读表时要按前缀把它挑出来 —— 否则会被当成一张多出来的表。 */
+const UKEY = 'u:';
+/* 内置表在"名单"里的两种状态（同一个 REMOVED 集合，靠前缀区分）：
+     b:表名 → 被移除，列在「已移除」里，随时能恢复
+     x:表名 → 彻底删掉，不列出来、也恢复不了（店主原话："删了就别再出现"）
+   放同一个集合是因为判断"某张内置表要不要挂出来"只查一次就够。 */
+const XKEY = 'x:';
+
+let TBL = [];              // 可见的表（内置 + 导入 + 换过照片的，按显示顺序）
+let IT = [];               // 可见的商品（t 指向 TBL 下标；i 全局唯一，供"全部"页点名字用）
+let IMP = [];              // 本机存着的表：表包导入的、以及换过照片的（结构与 RAW.tables 里的一致）
+let REMOVED = new Set();   // 内置表名单，key = 'b:表名'（移除）/ 'x:表名'（彻底删掉）
+let purgeArm = null, purgeTimer = null;  // 「彻底删掉」的二次确认：先武装，再点一下才真删
+let UNDO = new Set();      // 有"上一次换照片"备份可回退的表名
+let MULTI = false;
+let db = null, STORE_OK = false, STORE_WHY = '';
+
+function idbOpen(){
+  return new Promise((res, rej) => {
+    let q;
+    try { q = indexedDB.open(DB_NAME, DB_VER); }
+    catch (e) { return rej(e); }
+    const to = setTimeout(() => rej(new Error('打开超时')), 5000);
+    q.onupgradeneeded = () => {
+      const d = q.result;
+      if (!d.objectStoreNames.contains('tables')) d.createObjectStore('tables', {keyPath: 'id'});
+      if (!d.objectStoreNames.contains('meta'))   d.createObjectStore('meta',   {keyPath: 'k'});
+    };
+    q.onsuccess = () => { clearTimeout(to); res(q.result); };
+    q.onerror   = () => { clearTimeout(to); rej(q.error || new Error('打开失败')); };
+    q.onblocked = () => { clearTimeout(to); rej(new Error('被同名的其它页面占用')); };
+  });
+}
+function idbRun(store, mode, fn){
+  return new Promise((res, rej) => {
+    let tx;
+    try { tx = db.transaction(store, mode); } catch (e) { return rej(e); }
+    const req = fn(tx.objectStore(store));
+    tx.oncomplete = () => res(req ? req.result : undefined);
+    tx.onerror    = () => rej(tx.error || new Error('事务失败'));
+    tx.onabort    = () => rej(tx.error || new Error('事务中断'));
+  });
+}
+const dbAll   = () => idbRun('tables', 'readonly',  s => s.getAll()).then(r => r || []);
+/* 写盘即挂自动同步：表数据经 dbPut/dbDel 增删改，落库后防抖触发一次同步推送。
+   window.__inSync 为真时（doSync 自己回写 / 手动同步期间）跳过，避免回环。 */
+const dbPut   = t  => idbRun('tables', 'readwrite', s => s.put(t)).then(r => { if (!window.__inSync) autoSyncDirty(); return r; });
+const dbDel   = id => idbRun('tables', 'readwrite', s => s.delete(String(id))).then(r => { if (!window.__inSync) autoSyncDirty(); return r; });
+const metaGet = k  => idbRun('meta', 'readonly', s => s.get(k)).then(r => r && r.v);
+const metaPut = (k, v) => idbRun('meta', 'readwrite', s => s.put({k: k, v: v}));
+
+/* 「已移除」名单：IndexedDB 为主，localStorage 也写一份兜底（都只有几十字节） */
+async function loadRemoved(){
+  let arr = null;
+  if (STORE_OK){ try { const v = await metaGet('removed'); if (Array.isArray(v)) arr = v; } catch (e) {} }
+  if (!arr){ try { arr = JSON.parse(localStorage.getItem(LS_REMOVED) || '[]'); } catch (e) { arr = []; } }
+  return new Set(Array.isArray(arr) ? arr : []);
+}
+async function saveRemoved(){
+  const arr = [...REMOVED];
+  if (STORE_OK){ try { await metaPut('removed', arr); await metaPut('removedRev', Date.now()); } catch (e) {} }
+  try { localStorage.setItem(LS_REMOVED, JSON.stringify(arr)); } catch (e) {}
+  autoSyncDirty();   // 删/恢复内置表要让其它设备也变
+}
+
+/* ================== 同步（云端备份 / 多设备同步） ==================
+   同步单元 = 一张表（tables store 里的记录，用 rev=毫秒时间戳做 last-write-wins）
+              + removed 集合（内置表的"已移除"名单，rev 同理）。
+   删除走 tombstone：本地删表时记进 syncDel，同步时作为 del:true 推上去，
+   服务器留占位，其它设备拉到后也删。
+   注：表记录里的 upd 字段是"日期字符串"（如 9月25日），只用于显示/排序，
+   跟这里的时间戳 rev 是两回事，别混。 */
+const SYNC_META = 'sync', SYNC_DEL = 'syncDel', REMOVED_REV = 'removedRev';
+const LS_SYNC = 'cigpricer.sync';
+async function syncGet(){
+  let c = null;
+  if (STORE_OK){ try { c = await metaGet(SYNC_META); } catch (e) {} }
+  if (!c){ try { c = JSON.parse(localStorage.getItem(LS_SYNC) || 'null'); } catch (e) {} }
+  return Object.assign({enabled:false, url:'', user:'', pass:'', token:'', key:'', last:0}, c || {});
+}
+async function syncSet(c){
+  if (STORE_OK){ try { await metaPut(SYNC_META, c); } catch (e) {} }
+  try { localStorage.setItem(LS_SYNC, JSON.stringify(c)); } catch (e) {}
+}
+const dbGet = id => idbRun('tables', 'readonly', s => s.get(String(id))).then(r => r || undefined);
+async function syncMarkDel(id){
+  const c = await syncGet();
+  if (!c.enabled) return;
+  const list = (await metaGet(SYNC_DEL)) || [];
+  list.push({id: String(id), ts: Date.now()});
+  try { await metaPut(SYNC_DEL, list); } catch (e) {}
+}
+function syncBaseUrl(c){ return (c.url && c.url.trim()) ? c.url.trim().replace(/\/+$/, '') : ''; }
+function syncHeaders(c){
+  const h = {'Content-Type':'application/json'};
+  // token（注册/登录拿到）优先；c.key 是旧版共享密钥，留着做向后兼容
+  const a = (c.token && c.token.trim()) || (c.key && c.key.trim());
+  if (a) h['Authorization'] = 'Bearer ' + a.trim();
+  return h;
+}
+/* 注册(register=true) / 登录：成功后 token 存进配置，后续同步都带它 */
+async function syncAuth(c, register){
+  try {
+    const r = await fetch(syncBaseUrl(c) + (register ? '/api/sync/register' : '/api/sync/login'), {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({username:(c.user||'').trim(), password:c.pass||''}),
+    });
+    let j = null; try { j = await r.json(); } catch (e) {}
+    if (r.status === 200 && j && j.token){ c.token = j.token; await syncSet(c); return {ok:true}; }
+    if (r.status === 409) return {ok:false, msg:'这个名字已经被注册过（用原来的密码，或换一个名字）'};
+    if (r.status === 401) return {ok:false, msg:'用户名不存在或密码不对（第一次用先点「注册」）'};
+    if (r.status === 400) return {ok:false, msg:(j && j.error) || '用户名/密码格式不对（密码至少 4 位）'};
+    return {ok:false, msg:'服务器返回 ' + r.status};
+  } catch (e) { return {ok:false, msg:'连不上服务器：' + (e.message || e)}; }
+}
+/* doSync 自带 __inSync 防回环保护：拉取落地会 dbPut，落库钩子看见 __inSync 为真
+   就不再触发 autoSyncDirty。以前这层保护只靠调用方（autoSyncRun/syncRunUI）设置，
+   谁绕过它们直调 doSync（诊断脚本、以后的手动按钮改动），拉一次就多触发一次
+   5 秒后的自动同步 —— 除了多跑一圈，还会把 c.last 顶到别的设备改动 rev 的后面，
+   让那次改动永远拉不到（2026-09-26 e2e 实测踩到）。所以保护挪进 doSync 自己。 */
+async function doSync(register){
+  const __pin = window.__inSync;
+  window.__inSync = true;
+  try { return await doSyncImpl(register); }
+  finally { window.__inSync = __pin; }
+}
+async function doSyncImpl(register){
+  const c = await syncGet();
+  if (!c.enabled) return {ok:false, msg:'未启用同步'};
+  const base = syncBaseUrl(c);
+  const since = c.last || 0;
+  const now = Date.now();
+  let all;
+  try { all = await dbAll(); } catch (e) { return {ok:false, msg:'读本机存档失败'}; }
+  const tables = [];
+  for (const t of all){
+    if (!t || String(t.id).indexOf(UKEY) === 0) continue;     // 跳过"换照片"备份
+    if (!t.rev){ t.rev = now; if (STORE_OK){ try { await dbPut(t); } catch (e) {} } }  // 给旧记录补时间戳
+    tables.push({id: String(t.id), rev: t.rev, del:false, table: t});
+  }
+  const delList = (await metaGet(SYNC_DEL)) || [];
+  for (const d of delList) tables.push({id: String(d.id), rev: d.ts, del:true});
+  const remRev = (await metaGet(REMOVED_REV)) || 0;
+  const rem = {rev: remRev, v: [...REMOVED]};
+  // 没有 token（也没有旧密钥）就先登录拿一个；注册按钮则强制先注册
+  if (register || !(syncHeaders(c).Authorization)){
+    if (!(c.user || '').trim() || !(c.pass || '')) return {ok:false, msg:'先填用户名和密码（第一次用点「注册」）'};
+    const a = await syncAuth(c, !!register);
+    if (!a.ok) return {ok:false, msg:a.msg};
+  }
+  let res;
+  try {
+    let r = await fetch(base + '/api/sync/sync', {
+      method:'POST', headers: syncHeaders(c),
+      body: JSON.stringify({since, tables, removed: rem}),
+    });
+    if (r.status === 401 && (c.user || '').trim() && (c.pass || '')){
+      // token 过期 / 服务器换了 secret.key → 自动重登一次再试
+      const a = await syncAuth(c, false);
+      if (a.ok){
+        r = await fetch(base + '/api/sync/sync', {
+          method:'POST', headers: syncHeaders(c),
+          body: JSON.stringify({since, tables, removed: rem}),
+        });
+      }
+    }
+    if (r.status === 401) return {ok:false, msg:'用户名或密码不对（401）'};
+    if (r.status === 503) return {ok:false, msg:'服务器还没配置任何访问方式（密钥/用户）'};
+    if (!r.ok) return {ok:false, msg:'服务器返回 ' + r.status};
+    res = await r.json();
+  } catch (e) { return {ok:false, msg:'连不上服务器：' + (e.message || e)}; }
+  let pulled = 0, pulledDel = 0;
+  for (const rt of (res.tables || [])){
+    const cur = await dbGet(rt.id);
+    if (rt.del){
+      if (cur && (!cur.rev || rt.rev >= cur.rev)){ if (STORE_OK){ try { await dbDel(rt.id); } catch (e) {} } pulledDel++; }
+    } else if (rt.table && (!cur || rt.rev >= (cur.rev || 0))){
+      const rec = Object.assign({}, rt.table, {rev: rt.rev});
+      if (STORE_OK){ try { await dbPut(rec); } catch (e) {} }
+      pulled++;
+    }
+  }
+  if (res.removed){
+    REMOVED = new Set(res.removed.v || []);
+    if (STORE_OK){ try { await metaPut('removed', [...REMOVED]); await metaPut(REMOVED_REV, res.removed.rev); } catch (e) {} }
+    try { localStorage.setItem(LS_REMOVED, JSON.stringify([...REMOVED])); } catch (e) {}
+  }
+  if (delList.length && STORE_OK){ try { await metaPut(SYNC_DEL, []); } catch (e) {} }
+  c.last = res.now || now;
+  await syncSet(c);
+  // 把刚拉下来 / 删掉的表反映进运行期 IMP（rebuild 只读 IMP，不在 store 上即时反映）
+  if (STORE_OK){
+    const all2 = await dbAll();
+    UNDO = new Set(all2.filter(t => t && String(t.id).indexOf(UKEY) === 0).map(t => String(t.id).slice(UKEY.length)));
+    IMP = all2.filter(t => t && String(t.id).indexOf(UKEY) !== 0 && t.name && Array.isArray(t.items) && t.items.length);
+  }
+  rebuild(); applyAll();
+  return {ok:true, pulled, pulledDel, pushed: tables.length, last: c.last};
+}
+
+/* ================== 自动同步 ==================
+   启用同步后不再需要手动点「立即同步」：
+   - 启用 / 打开管理页时立即拉一次（拿到别的设备改的数据）；
+   - 本地改了表（dbPut/dbDel/saveRemoved 都会挂到 autoSyncDirty）后防抖推一次；
+   - 定时轮询拉取别人的改动。doSync 是幂等的时间戳 last-write-wins，反复跑安全。
+   注意：doSync 自身回写（拉取落地 / 补 rev）发生在 window.__inSync 为真期间，
+   落库钩子会跳过 autoSyncDirty，不会形成回环。 */
+const AUTO_INTERVAL = 60000;     // 轮询间隔（毫秒）：拉取其它设备的改动
+const AUTO_DIRTY_DELAY = 5000;   // 本地改动后多久推一次（防抖，毫秒）
+let _autoTimer = null, _dirtyTimer = null;
+async function autoSyncRun(){
+  if (window.__inSync) return;          // 正在手动/递归同步则跳过
+  window.__inSync = true;
+  try {
+    const c = await syncGet();
+    if (!c.enabled) return;
+    const r = await doSync();
+    // 自动同步只静默更新「上次同步」时间，不打断手动按钮的提示
+    if (r.ok && $('#syncLast')){
+      const cc = await syncGet();
+      $('#syncLast').textContent = cc.last ? ('上次同步：' + new Date(cc.last).toLocaleString()) : '还没同步过';
+    }
+  } catch (e) {}
+  finally { window.__inSync = false; }
+}
+function autoSyncStart(){
+  autoSyncStop();
+  autoSyncRun();                        // 启用立即拉一次
+  _autoTimer = setInterval(autoSyncRun, AUTO_INTERVAL);
+}
+function autoSyncStop(){ if (_autoTimer){ clearInterval(_autoTimer); _autoTimer = null; } }
+function autoSyncDirty(){
+  if (_dirtyTimer) clearTimeout(_dirtyTimer);
+  _dirtyTimer = setTimeout(autoSyncRun, AUTO_DIRTY_DELAY);
+}
+
+/* 按当前"可见表"重建 TBL / IT —— 删除、恢复、导入、换照片之后都调它一次 */
+function rebuild(){
+  // 表筛选 curT 记的是 TBL 下标，而表会增删。所以重建前先记下它指着哪张表，
+  // 重建后按**名字**找回来；找不回（那张表被删了）就回「全部」。
+  // 不这么做的话：删掉靠前的一张表，下标会整体前移 —— 筛选就悄悄换到另一张
+  // 店主从没点过的表上，搜索范围跟着变，而他完全看不出来（2026-09-24 实报）。
+  const keepT = (curT >= 0 && TBL[curT]) ? TBL[curT].name : null;
+  TBL = []; IT = [];
+  const add = (t, src, key) => {
+    const ti = TBL.length, its = [];
+    for (const it of (t.items || [])){
+      const o = {i: IT.length, n: it.n, t: ti, c: it.c, r: it.r, w: it.w, h: it.h, img: it.img};
+      IT.push(o); its.push(o);
+    }
+    TBL.push({id: t.id || t.name, key: key, src: src, name: t.name, date: t.date || '',
+              note: t.note || '', colLabels: t.colLabels || [], nCol: t.nCol, nRow: t.nRow,
+              rot: t.rot, blank: t.blank | 0, upd: t.upd || '',
+              sheetImg: t.sheetImg || '', items: its});
+  };
+  // 已经在 IMP 里的表名，就不再挂内置那张 —— 万一「已移除」名单丢了
+  // （清了浏览器数据），也不会同一个名字冒出两张表。
+  const impNames = new Set(IMP.map(t => String(t.name)));
+  for (const t of RAW.tables){
+    const k = 'b:' + t.name;
+    if (!REMOVED.has(k) && !REMOVED.has(XKEY + t.name) && !impNames.has(t.name)) add(t, 'builtin', k);
+  }
+  // from 决定管理页那个徽章：photo = 换过照片、shot = 用照片加的、其余 = 导入的。
+  // ⚠️ 这里漏掉 shot 的话，新加的表会被当成「导入的」，而且"还有几格没名字"的进度提示
+  //    也整个不显示（那段只对 src==='shot' 渲染）—— 2026-09-24 冒烟测抓出来的。
+  for (const t of IMP) add(t, (t.from === 'photo' || t.from === 'shot') ? t.from : 'import', t.id);
+  MULTI = TBL.length > 1;
+  curT = keepT === null ? -1 : TBL.findIndex(t => t.name === keepT);   // -1 = 全部
+  if (sheetT >= TBL.length) sheetT = 0;
+}
+
+/* ================== 工具 ================== */
+const $ = s => document.querySelector(s);
+const norm = s => String(s).toLowerCase().replace(/[\s\u3000·、，,。.（）()【】\[\]\-_/\\|]/g, '');
+
+// 查询串的字符被名称覆盖的比例（按字符计数，重复字符要重复匹配）
+function coverRatio(t, n){
+  const pool = n.split('');
+  let c = 0;
+  for (const ch of t){
+    const i = pool.indexOf(ch);
+    if (i >= 0){ pool.splice(i, 1); c++; }
+  }
+  return c / t.length;
+}
+// 查询串的"不同字符"在名称里出现了多少
+function uniqRatio(t, n){
+  const set = [...new Set(t.split(''))];
+  let hit = 0;
+  for (const ch of set) if (n.indexOf(ch) >= 0) hit++;
+  return hit / set.length;
+}
+
+// relaxed=true 时用于"没找到→找相近的"兜底，容忍错别字
+function scoreOf(name, tokens, relaxed){
+  const MIN_U = relaxed ? 0.5 : 0.75;
+  const MIN_C = relaxed ? 0.5 : 0.7;
+  const n = norm(name);
+  let total = 0;
+  for (const t of tokens){
+    let s = 0;
+    if (n === t) s = 1200;
+    else if (n.indexOf(t) === 0) s = 1000 - Math.min(n.length, 60);
+    else {
+      const i = n.indexOf(t);
+      if (i > 0) s = 850 - i * 3 - Math.min(n.length, 60);
+      else {
+        // 子序列匹配（支持"软中"这种跳字简写）
+        let p = 0;
+        for (const ch of n){ if (ch === t[p]){ p++; if (p === t.length) break; } }
+        if (p === t.length) s = 520 - (n.length - t.length) * 2;
+        else {
+          const u = uniqRatio(t, n), c = coverRatio(t, n);
+          if (u >= MIN_U && c >= MIN_C) s = Math.round(300 * u * c) - Math.min(n.length, 60);
+        }
+      }
+    }
+    if (s <= 0) return 0;
+    total += s;
+  }
+  return total;
+}
+
+/* 表清单（多张表时，搜索和列表都可以按表筛选；新表排前面） */
+let curT = -1;                       // -1 = 所有表（下标指向 TBL）
+
+function search(q, relaxed, tFilter){
+  const tokens = norm(q).length ? q.trim().split(/\s+/).map(norm).filter(Boolean) : [];
+  if (!tokens.length) return [];
+  const tf = tFilter === undefined ? curT : tFilter;
+  const out = [];
+  for (const it of IT){
+    if (tf >= 0 && it.t !== tf) continue;
+    const s = scoreOf(it.n, tokens, !!relaxed);
+    if (s > 0) out.push([s, it]);
+  }
+  // 同分时：新的表排前面 -> 再按列、行
+  out.sort((a, b) => b[0] - a[0] || a[1].t - b[1].t || a[1].c - b[1].c || a[1].r - b[1].r);
+  return out.map(x => x[1]);
+}
+
+const esc = s => String(s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+
+function hl(name, q){
+  const raw = String(name);
+  const needles = [q.trim()].concat(q.trim().split(/\s+/)).filter(Boolean)
+      .map(x => x.replace(/[\s\u3000]/g, '')).filter(x => x.length >= 1);
+  let best = null, bestLen = -1;
+  for (const nd of needles){
+    const i = raw.indexOf(nd);
+    if (i >= 0 && nd.length > bestLen){ best = [i, i + nd.length]; bestLen = nd.length; }
+  }
+  if (!best) return esc(raw);
+  return esc(raw.slice(0, best[0])) + '<mark>' + esc(raw.slice(best[0], best[1])) + '</mark>' + esc(raw.slice(best[1]));
+}
+
+const pos = it => '第 ' + it.c + ' 列 · 第 ' + it.r + ' 行';
+
+/* ================== 查看器 ================== */
+const viewer = $('#viewer'), vimg = $('#vimg'), vttl = $('#vttl'), vidx = $('#vidx');
+let list = [], cur = 0, zoomed = false, curQ = '';
+
+function showViewer(arr, i, q){
+  list = arr; cur = i; curQ = q || '';
+  viewer.classList.add('on');
+  document.body.style.overflow = 'hidden';
+  paint();
+}
+function paint(){
+  const it = list[cur];
+  if (!it) return;
+  zoomed = false;
+  vimg.style.width = '100%';
+  vimg.src = it.img;
+  vttl.textContent = it.n;
+  vidx.textContent = (cur + 1) + ' / ' + list.length + '　' + pos(it);
+  $('#vprev').disabled = cur <= 0;
+  $('#vnext').disabled = cur >= list.length - 1;
+  $('#vzoom').textContent = '放大';
+  // 只有本机存着的表能改名 —— 内置示例表是打包在 App 里的，改了没地方存
+  const TT = TBL[it.t];
+  $('#vrename').style.display = (TT && TT.src !== 'builtin') ? '' : 'none';
+  $('#vbody').scrollTop = 0; $('#vbody').scrollLeft = 0;
+}
+function closeViewer(){
+  viewer.classList.remove('on');
+  document.body.style.overflow = '';
+}
+$('#vclose').onclick = closeViewer;
+$('#vprev').onclick = () => { if (cur > 0){ cur--; paint(); } };
+$('#vnext').onclick = () => { if (cur < list.length - 1){ cur++; paint(); } };
+$('#vzoom').onclick = () => {
+  zoomed = !zoomed;
+  vimg.style.width = zoomed ? '260%' : '100%';
+  $('#vzoom').textContent = zoomed ? '缩小' : '放大';
+};
+vimg.onclick = () => $('#vzoom').click();
+
+// 左右滑动切换
+let sx = 0, sy = 0, sw = false;
+$('#vbody').addEventListener('touchstart', e => {
+  sx = e.touches[0].clientX; sy = e.touches[0].clientY; sw = true;
+}, {passive: true});
+$('#vbody').addEventListener('touchend', e => {
+  if (!sw) return; sw = false;
+  const t = e.changedTouches[0];
+  const dx = t.clientX - sx, dy = t.clientY - sy;
+  if (Math.abs(dx) > 60 && Math.abs(dx) > Math.abs(dy) * 1.6){
+    if (dx < 0) $('#vnext').click(); else $('#vprev').click();
+  }
+}, {passive: true});
+
+document.addEventListener('keydown', e => {
+  if (!viewer.classList.contains('on')) return;
+  if (e.key === 'Escape') closeViewer();
+  if (e.key === 'ArrowLeft') $('#vprev').click();
+  if (e.key === 'ArrowRight') $('#vnext').click();
+});
+
+/* ================== 结果渲染 ================== */
+const MAXCARD = 60;
+
+function renderResults(q){
+  const box = $('#res'), cnt = $('#cnt'), hot = $('#hot');
+  if (!norm(q).length){
+    hot.innerHTML = '<div class="hint">输入商品名即可查价；也可以直接点下面的品牌快速查看。<br>结果里的截图就是价目表原样切片，点一下可放大看原图。</div><div class="chips">' +
+      RAW.hot.map(b => '<b data-b="' + esc(b) + '">' + esc(b) + '</b>').join('') + '</div>';
+    box.innerHTML = ''; cnt.textContent = '';
+    return [];
+  }
+  hot.innerHTML = '';
+  let rs = search(q), loose = false;
+  if (!rs.length){ rs = search(q, true); loose = rs.length > 0; }   // 兜底：找相近的
+  // 搜索范围可能被顶部那排「表：」筛选缩小了。先记着，等下要写进文案 ——
+  // "只在某一张表里搜"这件事必须让店主看得见，否则搜索失败就成了无头案。
+  const locked = (curT >= 0 && TBL[curT]) ? TBL[curT].name : '';
+  if (!rs.length){
+    cnt.textContent = '';
+    // 搜不到时别急着说"没有这个商品"：先查两件"其实是我们自己造成"的事。
+    // 这两种情况店主该做的动作完全不同，混在一起说就是我们把他坑了 ——
+    //   ① 范围被筛选缩小了（放开就能搜到）→ 给个按钮一键放开
+    //   ② 照片加的表里那些格子还没名字（还都是编号）→ 教他改名
+    const wide = locked ? search(q, true, -1).length : 0;
+    if (locked && wide){
+      box.innerHTML = '<div class="empty">「' + esc(q) + '」不在「' + esc(locked) + '」里<br>' +
+        '<span style="font-size:13px">其他表里还有 ' + wide + ' 个结果</span><br>' +
+        '<button class="btnwide" data-wide="1">在所有 ' + TBL.length + ' 张表里找</button></div>';
+      return [];
+    }
+    const un = numItems();
+    if (un.length){
+      const who = [...new Set(un.map(x => TBL[x.t].name))];
+      // 本机要是有版式一样的表，就在这儿直接给按钮：
+      // 「套用名字」一下能填 300 多格，比"一个个改名"现实得多。
+      let btn = '';
+      for (const n of who){
+        const T = TBL.find(x => x.name === n);
+        const s = T && nameSrc(T);
+        if (s){
+          btn = '<button class="btnwide" data-inh="' + esc(T.key) + '">套用「' +
+                esc(s.t.name) + '」的商品名（' + s.t.nCol + ' 列版式一样）</button>';
+          break;
+        }
+      }
+      box.innerHTML = '<div class="empty">没找到「' + esc(q) + '」<br>' +
+        '<span style="font-size:13px">「' + who.map(esc).join('」「') + '」里的商品还没名字（' +
+        un.length + ' 格都是编号，App 读不出照片上的字）' +
+        (btn ? '，但本机有一张版式一样的表可以借名字：'
+             : '——<br>想让整张表都能搜：把这张照片发给助手做<b>同名表包</b>，' +
+               '导入后<b>原地替换</b>、名字一次全有<br>' +
+               '只让常卖的几个能搜：点开图 → 右上角「<b>改名</b>」') +
+        '</span>' + (btn ? '<br>' + btn : '') + '</div>';
+      return [];
+    }
+    box.innerHTML = '<div class="empty">没找到「' + esc(q) + '」<br><span style="font-size:13px">' +
+      (locked ? '当前只在「' + esc(locked) + '」里搜 · ' : '') +
+      '试试少写几个字，或只写品牌名<br>也可以到「全部」里按列翻</span></div>';
+    return [];
+  }
+  const show = rs.slice(0, MAXCARD);
+  cnt.innerHTML = '<span>' + (loose ? '没有完全匹配，以下是相近的商品（' + rs.length + '）' : '找到 ' + rs.length + ' 个结果') +
+    (locked ? ' · 只在「' + esc(locked) + '」里搜' : '') + '</span>' +
+    '<span>' + (rs.length > MAXCARD ? '只显示前 ' + MAXCARD + ' 个 · ' : '') + '点开可放大 ↗</span>';
+  box.innerHTML = show.map((it, i) =>
+    '<div class="card" data-i="' + i + '">' +
+      '<div class="shot"><img loading="lazy" style="aspect-ratio:' + it.w + '/' + it.h + '" ' +
+        'src="' + it.img + '" alt="' + esc(it.n) + '"></div>' +
+      '<div class="meta">' +
+        (MULTI ? '<i class="tb">' + esc(TBL[it.t].name) + '</i>' : '') +
+        '<div class="nm">' + (loose ? esc(it.n) : hl(it.n, q)) + '</div>' +
+        '<div class="pos">' + pos(it) + '</div></div>' +
+    '</div>').join('');
+  return rs;
+}
+
+let lastList = [];
+let timer = null;
+$('#q').addEventListener('input', e => {
+  const v = e.target.value;
+  $('#clr').classList.toggle('on', v.length > 0);
+  clearTimeout(timer);
+  timer = setTimeout(() => { lastList = renderResults(v); }, 110);
+});
+$('#clr').onclick = () => {
+  $('#q').value = ''; $('#clr').classList.remove('on');
+  lastList = renderResults(''); $('#q').focus();
+};
+$('#res').addEventListener('click', e => {
+  // 「在所有表里找」：把被顶部筛选缩小的范围放开，再按当前关键词重搜
+  const w = e.target.closest('button[data-wide]');
+  if (w){ curT = -1; renderFilters(); lastList = renderResults($('#q').value); return; }
+  // 「套用名字」：搜不到就是因为格子还没名字，这一下能填三百多格
+  const ih = e.target.closest('button[data-inh]');
+  if (ih){
+    const t = TBL.find(x => x.key === ih.dataset.inh);
+    if (t) doInherit(t.name);
+    return;
+  }
+  const c = e.target.closest('.card');
+  if (c) showViewer(lastList, +c.dataset.i, $('#q').value);
+});
+$('#hot').addEventListener('click', e => {
+  const b = e.target.closest('b');
+  if (!b) return;
+  const v = b.dataset.b;
+  $('#q').value = v; $('#clr').classList.add('on');
+  lastList = renderResults(v);
+  window.scrollTo({top: 0});
+});
+
+/* ================== 表筛选 ================== */
+const tlabel = t => t.name + (t.date ? ' · ' + t.date : '');
+let sheetT = 0;
+
+/** 这一格的名字是不是"还没起名"的编号。
+    「用照片加的表」里 App 读不出商品名，先按「表名 序号」编着（酒水 1、酒水 2…），
+    要店主看图改名才算真有名字。搜索搜不到时靠它把话说准：
+    不是"没这个商品"，而是"格子上还没名字"。 */
+function numName(T, n){
+  if (!T) return false;
+  const re = new RegExp('^' + String(T.name).replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + ' \\d+$');
+  return re.test(String(n));
+}
+/** 「用照片加的表」里还没起名的格子。
+    ⚠️ 只看 src === 'shot' —— 导入的表包就算商品名碰巧长成"xx 1"也不算，
+    那是人家表里本来就有的名字，拿它劝店主去改名是错的。 */
+function numItems(){
+  return IT.filter(it => { const T = TBL[it.t]; return T && T.src === 'shot' && numName(T, it.n); });
+}
+
+/** 哪张表能给这张表当"名字来源"（「套用名字」用）。
+    条件：**列数必须一样** —— 列数对不上，名字就整片错位，宁可不说；名字还得是齐的
+    （真名字过半，不然借过去还是一堆编号）。
+
+    ⚠️ 候选**包括内置表**，即使店主已经把它「彻底删掉」了。这是刻意的：
+    「彻底删掉」删的是"要不要看到这张表"，而商品名仍然打包在页面里 ——
+    店主自己拍的照片要套名字时，内置的示例表常常是唯一能借的来源。
+    返回 {t, tag, named, drow}（行数差越小越优先）或 null。 */
+function nameSrc(T){
+  if (!T) return null;
+  const out = [];
+  const consider = (s, tag) => {
+    if (!s || String(s.name) === String(T.name)) return;
+    if (+s.nCol !== +T.nCol) return;
+    const items = s.items || [];
+    if (!items.length) return;
+    const named = items.reduce((n, x) => n + (x.n && !numName(s, x.n) ? 1 : 0), 0);
+    if (named < items.length * 0.5) return;
+    // 能填几格？必须先算这个 —— 否则"套过了、只剩日期格没名字"时按钮还赖着不走，
+    // 点下去什么也不会发生（2026-09-24 冒烟测抓出来的）。
+    const m = new Map();
+    for (const x of items) if (x.n) m.set((+x.c) + ',' + (+x.r), x.n);
+    let gain = 0;
+    for (const x of (T.items || [])){
+      if (!numName(T, x.n)) continue;                    // 店主自己改过的，不算
+      const v = m.get((+x.c) + ',' + (+x.r));
+      if (v && !numName(s, v)) gain++;
+    }
+    if (!gain) return;
+    out.push({ t: s, tag: tag, named: named, gain: gain,
+               drow: Math.abs((+s.nRow || 0) - (+T.nRow || 0)) });
+  };
+  for (const s of RAW.tables){
+    consider(s, REMOVED.has(XKEY + s.name) ? 'App自带的（已彻底删掉，名字仍在）'
+                : REMOVED.has('b:' + s.name) ? 'App自带的（已移除）' : 'App自带的');
+  }
+  for (const s of IMP) consider(s, '存在本机');
+  if (!out.length) return null;
+  out.sort((a, b) => (a.drow - b.drow) || (b.gain - a.gain));   // 行数最接近的优先
+  return out[0];
+}
+
+function renderFilters(){
+  for (const host of ['#tfilter', '#sfilter']){
+    const el = $(host);
+    if (!MULTI){ el.innerHTML = ''; continue; }
+    const all = host === '#tfilter'
+      ? '<b class="' + (curT < 0 ? 'on' : '') + '" data-t="-1">全部 ' + IT.length + '</b>'
+      : '';
+    el.innerHTML = '<span class="tfl">表：</span>' + all +
+      TBL.map((t, i) => '<b class="' + ((host === '#tfilter' ? curT : sheetT) === i ? 'on' : '') +
+        '" data-t="' + i + '">' + esc(t.name) + (t.date ? ' ' + esc(t.date) : '') + '</b>').join('');
+    el.querySelectorAll('b').forEach(b => b.onclick = () => {
+      const t = +b.dataset.t;
+      if (host === '#tfilter'){ curT = t; renderFilters(); lastList = renderResults($('#q').value); }
+      else { sheetT = t; renderFilters(); showSheet(t); }
+    });
+  }
+}
+
+/* ================== 全部（按表分段 + 按列分组） ================== */
+function buildAll(){
+  const box = $('#groups');
+  if (!TBL.length){ box.innerHTML = '<div class="empty">还没有任何表<br><span style="font-size:13px">到「管理」里导入一个表包</span></div>'; return; }
+  box.innerHTML = TBL.map((T, ti) => {
+    const its = IT.filter(x => x.t === ti);
+    if (!its.length) return '';
+    const head = MULTI
+      ? '<div class="thead">' + esc(T.name) + (T.date ? ' · ' + esc(T.date) : '') +
+        '<span class="tag">' + its.length + '</span></div>'
+      : '';
+    return '<div class="tsec">' + head + T.colLabels.map((lab, ci) => {
+      const list = its.filter(x => x.c === ci + 1);
+      if (!list.length) return '';
+      return '<details class="grp"' + (ti === 0 && ci === 0 ? ' open' : '') + '>' +
+        '<summary>第 ' + (ci + 1) + ' 列 · ' + esc(lab) +
+        '<span class="tag">' + list.length + '</span><span class="arrow">›</span></summary>' +
+        '<div class="items">' +
+        list.map(x => '<span data-id="' + x.i + '">' + esc(x.n) + '</span>').join('') +
+        '</div></details>';
+    }).join('') + '</div>';
+  }).join('');
+}
+$('#groups').addEventListener('click', e => {
+  const sp = e.target.closest('span[data-id]');
+  if (!sp) return;
+  const id = +sp.dataset.id;
+  const it = IT.find(x => x.i === id);
+  if (!it) return;
+  showViewer(IT.filter(x => x.t === it.t && x.c === it.c), it.r - (it.c === 1 ? 2 : 1), '');
+});
+
+/* ================== 原表（多张表可切换） ================== */
+let sheetApply = function(){};
+let showSheet = function(){};
+(function sheetView(){
+  const img = $('#sheetimg'), box = $('#sheetbox'), lv = $('#lv');
+  const steps = [1, 1.5, 2, 3, 4, 6];
+  let k = 0;
+  function apply(){
+    const w = box.clientWidth;
+    if (!w) return;                       // 面板隐藏时宽度为 0，跳过（切回该页会重算）
+    img.style.width = (w * steps[k]) + 'px';
+    lv.textContent = Math.round(steps[k] * 100) + '%';
+  }
+  showSheet = ti => {
+    const t = TBL[ti];
+    img.src = t ? t.sheetImg : '';
+    k = 0; apply();
+  };
+  sheetApply = apply;
+  $('#zin').onclick = () => { k = Math.min(steps.length - 1, k + 1); apply(); };
+  $('#zout').onclick = () => { k = Math.max(0, k - 1); apply(); };
+  $('#zfit').onclick = () => { k = 0; apply(); };
+  img.onload = apply;
+  window.addEventListener('resize', apply);
+})();
+
+/* ================== Tab 切换 ================== */
+document.querySelectorAll('.tabs button').forEach(b => {
+  b.onclick = () => {
+    document.querySelectorAll('.tabs button').forEach(x => x.classList.remove('on'));
+    document.querySelectorAll('.panel').forEach(x => x.classList.remove('on'));
+    b.classList.add('on');
+    $('#' + b.dataset.tab).classList.add('on');
+    if (b.dataset.tab === 'p-sheet') requestAnimationFrame(sheetApply);
+    if (b.dataset.tab === 'p-ocr') loadOcr();
+  };
+});
+
+/* ================== 认字页（内嵌，要联网） ==================
+   整页在构建期由 tools/build_app.py 塞进来，就是下面 OCR_HTML 那个长字符串。
+   ⚠️ 注释里千万别再写那个占位符名字 —— Python 是全文替换，会把整页塞进注释里，
+      而页面里 CSS 的注释结束符会提前把这行注释闭掉，整段脚本直接语法错误。
+   装进 srcdoc iframe：跟 App 同源 → 认完能 postMessage 把表包直接交回来入库，
+   同时 CSS / 全局变量完全隔离，两边互不干扰。第一次点这个页签才真正加载。 */
+const OCR_HTML = __OCRHTML__;
+let ocrLoaded = false;
+function loadOcr() {
+  if (ocrLoaded || !OCR_HTML) return;
+  ocrLoaded = true;
+  $('#ocrframe').srcdoc = OCR_HTML;
+}
+/* ★ 替认字页选照片：WebView 不给 srcdoc iframe 回调 onShowFileChooser
+   （adb 真实点击实测也拉不起），所以让 iframe 直接调主 frame 的这个同步函数 ——
+   同一个点击的用户手势还在，主 frame 的 input 就能正常拉起系统选择器。 */
+window.__ocrPick = function () {
+  const i = $('#ocrfile');
+  if (i) { i.value = ''; i.click(); }
+};
+$('#ocrfile').addEventListener('change', (e) => {
+  const fs = Array.from(e.target.files || []);
+  e.target.value = '';
+  const fr = $('#ocrframe');
+  if (fs.length && fr && fr.contentWindow) {
+    try { fr.contentWindow.postMessage({ ocrFiles: fs }, '*'); } catch (err) { }
+  }
+});
+window.addEventListener('message', (e) => {
+  const d = e.data;
+  if (!d) return;
+  if (d.ocrH) {                                  // 子页面长高了，跟着撑 iframe，别出两层滚动条
+    const f = $('#ocrframe');
+    if (f) f.style.height = Math.max(420, d.ocrH) + 'px';
+    return;
+  }
+  if (d.ocrPick) { window.__ocrPick(); return; } // iframe 没法直接调函数时的兜底
+  if (!d.cigpack) return;
+  (async () => {
+    const file = new File([d.cigpack], (d.name || '认字') + '.cigtable.json', { type: 'application/json' });
+    document.querySelector('.tabs button[data-tab="p-mgr"]').click();
+    await doImport([file]);                      // 走的是和「导入表包」完全同一条路
+  })();
+});
+
+/* ================== 管理：导入新表 / 删除旧表 / 恢复 ================== */
+let msgTimer = null;
+function flash(html, kind){
+  const el = $('#mgrmsg');
+  el.className = 'msg on ' + (kind || 'ok');
+  el.innerHTML = html;
+  clearTimeout(msgTimer);
+  if (kind !== 'err') msgTimer = setTimeout(() => { el.className = 'msg'; }, 12000);
+}
+
+function renderMgr(){
+  $('#mgrn').textContent = TBL.length;
+
+  /* 顶部说明跟着"有没有表"切换。
+     没表时换成 #mgrempty，讲清楚"按钮为什么不在、照片该怎么进来"。
+     ⚠️ 这两段文字**改了就必须重录 android/tap-points.json** —— 提示块一变长，
+        下面所有按钮的位置都跟着往下走（2026-09-25 这次就是这么重录的）。 */
+  $('#mgrhint').style.display = TBL.length ? '' : 'none';
+  $('#mgrempty').className = TBL.length ? 'hint' : 'hint on';
+
+  // 存储不可用时必须明说，不能让店主以为存住了
+  const warn = $('#mgrwarn');
+  if (STORE_OK){
+    warn.className = 'msg';
+  } else {
+    warn.className = 'msg on warn';
+    warn.innerHTML = '⚠️ 这台设备不让本页保存数据（' + esc(STORE_WHY) + '）。<br>' +
+      '导入的表、换过的照片只在本次打开期间有效，关掉就没了；删掉的表也记不住。';
+  }
+
+  $('#mgrlist').innerHTML = TBL.length
+    ? TBL.map(t => {
+        const badge = t.src === 'photo' ? '换过照片' : t.src === 'shot' ? '照片加的'
+                    : t.src === 'import' ? '导入的' : '内置的';
+        // 「照片加的」表：商品名只是「表名+序号」，所以搜不到具体商品。
+        // 让店主一眼看到进度（改过几个名字），而不是等到搜不出来才发现。
+        // ⚠️ 只对 shot 表加这一段 —— 内置表的表行高度必须保持原样，
+        //    否则 tap-points.json 里的「换照片」坐标会跟着动（坑 19）。
+        let shotInfo = '';
+        let inhBtn = '';
+        if (t.src === 'shot'){
+          const numLike = new RegExp('^' + t.name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + ' \\d+$');
+          const named = t.items.reduce((n, x) => n + (numLike.test(x.n) ? 0 : 1), 0);
+          if (named < t.items.length){
+            // 本机有一张版式一样的表 → 直接给按钮，比"一个个改名"快 300 倍
+            const src = nameSrc(t);
+            shotInfo = ' · <span class="blank">' + named + ' / ' + t.items.length + ' 格有名字' +
+                       (src ? '' : '（点开图 →「改名」）') + '</span>';
+            if (src){
+              inhBtn = '<div class="inhrow"><button class="inh" data-inh="' + esc(t.key) + '">' +
+                       '套用「' + esc(src.t.name) + '」的商品名（' + src.t.nCol + ' 列版式一样）</button></div>';
+            }
+          }
+        }
+        // blank = 这次切图时"没有名字"的格子数（第 1 列第 1 格的日期格永远算一个），
+        // 比 1 多出来的那些是换照片时新增、还没有名字的行 —— 那种情况要提示店主发照片来认。
+        return '<div class="trow">' +
+          '<div class="tl">' +
+            '<div class="tn">' + esc(t.name) + (t.date ? '<i>' + esc(t.date) + '</i>' : '') + '</div>' +
+            '<div class="tm"><b class="src' + (t.src === 'builtin' ? '' : ' im') + '">' + badge + '</b>' +
+              t.items.length + ' 个商品 · ' + t.nCol + ' 列 × ' + t.nRow + ' 行' +
+              (t.upd ? ' · ' + esc(t.upd) : '') +
+              (t.blank > 1 ? ' · <span class="blank">' + (t.blank - 1) + ' 格没名字</span>' : '') +
+              shotInfo +
+            '</div>' + inhBtn +
+          '</div>' +
+          '<div class="ops">' +
+            (t.src !== 'builtin' ? '<button class="ren" data-ren="' + esc(t.key) + '">改名</button>' : '') +
+            '<button class="photo" data-photo="' + esc(t.key) + '">换照片</button>' +
+            (UNDO.has(t.name) ? '<button class="undo" data-undo="' + esc(t.name) + '">撤销</button>' : '') +
+            '<button class="del" data-del="' + esc(t.key) + '">删除</button>' +
+          '</div>' +
+        '</div>';
+      }).join('')
+    : '<div class="empty">现在一张表都没有<br>' +
+      '<span style="font-size:13px">' +
+      // 「已移除」区只在真有可恢复的内置表时才存在 —— 都被「彻底删掉」了还说"在下面恢复"，
+      // 店主会往下滚一圈什么也找不到。
+      (RAW.tables.some(t => REMOVED.has('b:' + t.name))
+        ? '在下面「已移除」里点「恢复」就能找回来'
+        : '点上面的「＋ 用照片加表」就能加一张，或导入助手做好的表包') +
+      '</span></div>';
+
+  // 只列 b: 的 —— x:（彻底删掉）不进这个名单，店主已经说了"不想再看到它"
+  const hidden = RAW.tables.filter(t => REMOVED.has('b:' + t.name));
+  $('#mgrhidden').innerHTML = hidden.length
+    ? '<div class="hsub">已移除（' + hidden.length + '） · 点「恢复」找回，或「彻底删掉」让它不再出现</div>' +
+      hidden.map(t => '<div class="trow off"><div class="tl">' +
+        '<div class="tn">' + esc(t.name) + (t.date ? '<i>' + esc(t.date) + '</i>' : '') + '</div>' +
+        '<div class="tm"><b class="src">内置的</b>' + t.items.length + ' 个商品</div></div>' +
+        '<div class="ops">' +
+          '<button class="res" data-res="' + esc('b:' + t.name) + '">恢复</button>' +
+          '<button class="purge' + (purgeArm === t.name ? ' arm' : '') +
+            '" data-purge="' + esc(t.name) + '">' +
+            (purgeArm === t.name ? '再点一次' : '彻底删掉') + '</button>' +
+        '</div></div>').join('')
+    : '';
+
+  // 文字要短 —— .mgrbar 那一行现在挤了两个按钮（导入表包 + 用照片加表），
+  // 统计字数多一行就会把两个按钮挤变形。
+  $('#mgrstat').innerHTML = STORE_OK
+    ? '存档可用<br>本机 ' + IMP.length + ' 张'
+    : '存档不可用';
+}
+
+/* 改名：只对非内置表开放。表名是一堆机制的键 —— 换照片备份（u:表名）、
+   「顶掉的内置表」名单（b:表名）、照片加的表商品名前缀（"表名 序号"）——
+   改名要把它们一起搬过去，不然备份、删表恢复、搜索全会错位。
+   改完落库钩子（dbPut→autoSyncDirty）会自动把新名字同步给其它设备。 */
+/* ⚠ 不能叫 doRename —— 商品改名（viewer 里）已占了这个名字，函数声明会
+   后者覆盖前者，表改名点下去就静默没反应（2026-09-26 店主实测踩坑）。 */
+async function renameTable(key){
+  const t = TBL.find(x => x.key === key);
+  if (!t || t.src === 'builtin') return;    // 内置表的恢复/顶替记账全按名字，不让改
+  const nn = await askText({
+    title: '给表改名',
+    hint: '改完后搜索、管理页和其它设备（自动同步）都用新名字。',
+    preset: t.name, ph: '新的表名', ok: '改名',
+  });
+  if (nn === null) return;
+  const name = String(nn || '').trim();
+  if (!name || name === t.name) return;
+  if (TBL.some(x => x !== t && x.name === name)){
+    flash('已经有一张表叫「' + esc(name) + '」了，换个不重复的名字。', 'err');
+    return;
+  }
+  const old = t.name;
+  const rec = IMP.find(x => x.id === t.id);
+  if (!rec) return;
+  rec.name = name;
+  rec.rev = Date.now();                     // 新时间戳，同步时覆盖旧名那份
+  if (STORE_OK){
+    try { await dbPut(rec); }
+    catch (e) { flash('改名失败：' + esc(e.message || String(e)), 'err'); return; }
+  }
+  // ① 换照片备份跟着搬（u:旧名 → u:新名），「撤销」按钮才不会凭空消失
+  if (STORE_OK && UNDO.has(old)){
+    try {
+      const bk = await dbGet(UKEY + old);
+      if (bk){ bk.id = UKEY + name; bk.name = name; await dbPut(bk); await dbDel(UKEY + old); }
+    } catch (e) {}
+    UNDO.delete(old); UNDO.add(name);
+  }
+  // ② 这张表当初顶掉过同名内置表：名单改按新名记，删表时才知道把哪张内置表放回来
+  const bkOld = 'b:' + old;
+  if (REMOVED.has(bkOld)){ REMOVED.delete(bkOld); REMOVED.add('b:' + name); await saveRemoved(); }
+  // ③ 「照片加的」表：商品名是「表名 序号」，前缀一起换，按新名才搜得到
+  if (rec.from === 'shot' || rec.from === 'photo'){
+    const pre = new RegExp('^' + old.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + ' (\\d+$)');
+    let hit = 0;
+    for (const it of (rec.items || [])){
+      const m = pre.exec(String(it.n || ''));
+      if (m){ it.n = name + ' ' + m[1]; hit++; }
+    }
+    if (hit && STORE_OK){ try { await dbPut(rec); } catch (e) {} }
+  }
+  rebuild(); applyAll();
+  flash('已改名为「' + esc(name) + '」。');
+}
+
+async function doDelete(key){
+  const t = TBL.find(x => x.key === key);
+  if (!t) return;
+  if (t.src !== 'builtin'){                 // 导入的表 / 换过照片的表：本机存档连备份一起删
+    await syncMarkDel(t.id);
+    if (STORE_OK){
+      try { await dbDel(t.id); await dbDel(UKEY + t.name); }
+      catch (e) { flash('删除失败：' + esc(e.message || String(e)), 'err'); return; }
+    }
+    IMP = IMP.filter(x => x.id !== t.id);
+    UNDO.delete(t.name);
+    const bk = 'b:' + t.name;
+    if (REMOVED.has(bk)){                    // 当初被这张表顶掉的内置表，放回来
+      REMOVED.delete(bk); await saveRemoved();
+      flash('已删除「' + esc(t.name) + '」。内置的同名表已自动恢复。');
+    } else {
+      flash('已删除「' + esc(t.name) + '」。要再加回来得重新导入表包或换照片。');
+    }
+  } else {
+    REMOVED.add(key); await saveRemoved();
+    // 紧跟着指一句「彻底删掉」在哪 —— 店主想永久删掉内置表时，就是在这一刻要找它
+    // （「已移除」区在列表下方，不提示他就得自己往下滚才看得见）。
+    flash('已从 App 移除「' + esc(t.name) + '」。在下面「已移除」里随时能恢复；' +
+          '要是这张内置表以后都用不上，就在那儿再点「彻底删掉」，它就不再出现了。');
+  }
+  rebuild(); applyAll();
+}
+
+async function doRestore(key){
+  REMOVED.delete(key); await saveRemoved();
+  rebuild(); applyAll();
+  flash('已恢复「' + esc(String(key).replace(/^b:/, '')) + '」。');
+}
+
+/* 「彻底删掉」：内置表从「已移除」再走一步 —— 名单里的标记从 b: 换成 x:，
+   从此不进「已移除」区、也没有恢复按钮（店主原话："删了就别再出现"）。
+   不可逆，所以要点两次：第一次只是把按钮武装起来（文字变成「再点一次」，加粗红框），
+   8 秒内不点第二次就自己卸武装 —— 免得店主走了神，回来随手一点就删了。 */
+async function doPurge(name){
+  if (purgeArm !== name){
+    purgeArm = name;
+    clearTimeout(purgeTimer);
+    purgeTimer = setTimeout(() => { if (purgeArm === name){ purgeArm = null; renderMgr(); } }, 8000);
+    renderMgr();
+    return;
+  }
+  clearTimeout(purgeTimer); purgeArm = null;
+  REMOVED.delete('b:' + name);
+  REMOVED.add(XKEY + name);
+  await saveRemoved();
+  rebuild(); applyAll();
+  flash('已把内置的「' + esc(name) + '」彻底删掉，它不会再出现在列表里。');
+}
+
+function packProblem(p){
+  if (!p || typeof p !== 'object') return '文件内容不是一个 JSON 对象';
+  if (p.fmt !== PACK_FMT) return '这不是烟价速查的表包（fmt=' + (p.fmt || '空') + '）';
+  if (+p.v > PACK_V) return '表包版本（v' + p.v + '）比这个 App 新，请升级 App';
+  const t = p.table;
+  if (!t || !t.name) return '表包里没有表名';
+  if (!Array.isArray(t.items) || !t.items.length) return '表包里没有商品';
+  return '';
+}
+
+/** 这个文件是照片还是表包？先看 MIME，再看扩展名
+    （微信转过来的、相机拍的，经常没有 type，只剩一个名字）。 */
+function isPicFile(f){
+  const nm = String((f && f.name) || '');
+  return /^image\//.test((f && f.type) || '') ||
+         /\.(jpe?g|png|heic|heif|webp|bmp|gif)$/i.test(nm);
+}
+
+/* ================== 「管理」页文件入口的唯一分流点 ==================
+   店主的脑子里只有一件事："我要加个表"。他不会先分清手里这个文件是照片还是表包，
+   更不该因为这个被弹一句 JSON 报错 —— 2026-09-24 他拿着照片点「导入表包」，
+   屏幕上一句"没能导入"，他就来问"app 导入不了图片"。
+
+   所以照片**不管从哪个口子进来**，都直接走它该走的那条路（App 自己切格 → 得到一张
+   能翻能搜的表，等于"自动导入"）；表包照旧走导入。两个入口于是都容错：
+     ·「＋ 导入表包」里选了照片 → 一样能建成表（不再报错）
+     · 照片/表包直接拖进页面 → 各走各的
+       （拖拽只有浏览器版用得上：手机相册拖不进 WebView。所以文案里**不宣传拖拽** ——
+        说了等于给店主一个他做不到的办法）
+   ⚠️ 这里**不弹二选一**问"你是想更新还是新增"：多一层弹框就多一次点错的机会，
+      而且在起名框里说清楚"想更新就点取消、去点换照片"就够了（见 doAddPhotos）。 */
+async function acceptFiles(fs){
+  const pics = [], packs = [];
+  for (const f of Array.from(fs || [])) (isPicFile(f) ? pics : packs).push(f);
+  if (pics.length) await doAddPhotos(pics);      // 照片 → 新建一张表
+  if (packs.length) await doImport(packs);       // 表包 → 导入/更新
+}
+
+async function doImport(files){
+  const add = [], upd = [], hid = [], bad = [];
+  for (const f of files){
+    let t = null;
+    try {
+      /* 兜底：正常走不到 —— 照片在 acceptFiles 那一层就被分流去「用照片加表」了。
+         留这句是防别处直接调 doImport 时又吐一句 JSON 报错
+         （2026-09-24 店主就是这么来问"app 导入不了图片"的）。 */
+      if (isPicFile(f)) throw new Error(
+        '这是一张照片，不是表包 —— 照片请用上面的「＋ 用照片加表」。');
+      let p;
+      try { p = JSON.parse(await f.text()); }
+      catch (_) { throw new Error(TBL.length
+        ? '这不是表包文件（表包是 .cigtable.json）。要是想用照片更新价格，请点「换照片」'
+        : '这不是表包文件（表包是 .cigtable.json，由助手生成）。照片请先发给助手做成表包'); }
+      const why = packProblem(p);
+      if (why) throw new Error(why);
+      t = p.table;
+      t.id = String(t.id || t.name);
+      t.items = (t.items || []).filter(x => x && x.n && x.img &&
+        String(x.img).indexOf('data:image/') === 0 && +x.c > 0 && +x.r > 0 && +x.w > 0 && +x.h > 0);
+      if (!t.items.length) throw new Error('表包里没有有效的商品（名字或图片缺失）');
+      t.colLabels = Array.isArray(t.colLabels) ? t.colLabels : [];
+      t.nCol = +t.nCol || Math.max(...t.items.map(x => +x.c));
+      t.nRow = +t.nRow || Math.max(...t.items.map(x => +x.r));
+    } catch (e) {
+      bad.push(f.name + ' → ' + ((e && e.message) || e));
+      continue;
+    }
+    try {
+      const at = IMP.findIndex(x => x.id === t.id);
+      t.rev = Date.now();
+      if (STORE_OK) await dbPut(t);
+      if (at >= 0){
+        IMP[at] = t; upd.push(t.name);
+        // 被表包整个替换掉了，之前"换照片"的备份就没意义了
+        if (STORE_OK) { try { await dbDel(UKEY + t.name); } catch (e) {} }
+        UNDO.delete(t.name);
+      }
+      else { IMP.push(t); add.push(t.name + '（' + t.items.length + ' 个商品）'); }
+      // 同名内置表自动隐藏 —— 这就是"上传新表更新价格"的语义。
+      // 但那张内置表要是已经被「彻底删掉」了，就一个标记都别加：否则它会从「已移除」里
+      // 冒出来，店主再点一下「恢复」，就把自己刚赶走的内置表又请回来了。
+      const bk = 'b:' + t.name;
+      if (RAW.tables.some(x => x.name === t.name) &&
+          !REMOVED.has(bk) && !REMOVED.has(XKEY + t.name)){
+        REMOVED.add(bk); await saveRemoved(); hid.push(t.name);
+      }
+    } catch (e) {
+      bad.push(f.name + ' → 写不进本机存储（' + ((e && e.message) || e) + '）');
+    }
+  }
+  // 店主刚把表导进来，意图就是"我要用它"，所以把搜索范围放开到全部表。
+  // 否则会掉进"导入新表后搜不到"的坑：搜索页顶部那排「表：」筛选是粘滞的，
+  // 他早先点过某一张（很自然，表一多那排 chip 才出现），新导入的表就落在
+  // 搜索范围外，搜新表的商品永远 0 条（2026-09-24 店主实报）。
+  if (add.length) curT = -1;
+  rebuild(); applyAll();
+  const parts = [];
+  if (add.length) parts.push('✅ 已导入：' + add.map(esc).join('、'));
+  if (upd.length) parts.push('♻️ 已更新：' + upd.map(esc).join('、'));
+  if (hid.length) parts.push('原来内置的「' + hid.map(esc).join('、') +
+    '」已放进「已移除」（随时可恢复）');
+  if (bad.length) parts.push('⚠️ 没能导入：<br>' + bad.map(esc).join('<br>'));
+  flash(parts.join('<br>'), (!add.length && !upd.length) ? 'err' : 'ok');
+}
+
+/* ================== 换照片（相册里选一张新表，商品名沿用上一版） ==================
+   为什么商品名要沿用：手写价目表的名字没法在手机端可靠识别，而店主换的通常
+   就是同一张纸的新价格 —— 名字 95% 没变。沿用既省掉重新认字，更重要的是
+   **不会因为认错字报错价**。版式对不上（列数不同）就直接拒绝，交回给助手。
+   切图算法在 tools/cropjs_src.js（构建期注入成 CIGCROP）。 */
+
+let busyTick = null, busyT0 = 0;
+function busyOn(title, detail){
+  $('#busyt').textContent = title;
+  $('#busyd').textContent = detail || '';
+  $('#busybar').style.width = '0%';
+  $('#busy').classList.add('on');
+  busyT0 = Date.now();
+  clearInterval(busyTick);
+  busyTick = setInterval(() => {
+    const s = Math.round((Date.now() - busyT0) / 1000);
+    if (s >= 3) $('#busyd').textContent = '已经 ' + s + ' 秒。照片越大越慢，别退出。';
+  }, 500);
+}
+function busySet(p, detail){
+  $('#busybar').style.width = Math.max(0, Math.min(100, Math.round(p * 100))) + '%';
+  if (detail) $('#busyd').textContent = detail;
+}
+function busyOff(){
+  clearInterval(busyTick);
+  $('#busy').classList.remove('on');
+}
+
+/* 表 → 能存进 IndexedDB 的普通对象（TBL 项里的 items 带了 i/t 这些运行期字段，去掉） */
+function plainTable(src, id, extra){
+  return Object.assign({
+    id: id, name: src.name, date: src.date || '', note: src.note || '',
+    colLabels: src.colLabels || [], nCol: src.nCol, nRow: src.nRow,
+    rot: src.rot, blank: src.blank | 0, upd: src.upd || '',
+    sheetImg: src.sheetImg || '',
+    items: (src.items || []).map(x => ({n: x.n, c: x.c, r: x.r, w: x.w, h: x.h, img: x.img})),
+  }, extra || {});
+}
+
+function nowStr(){
+  const d = new Date(), p = n => (n < 10 ? '0' : '') + n;
+  return (d.getMonth() + 1) + '月' + d.getDate() + '日 ' + p(d.getHours()) + ':' + p(d.getMinutes());
+}
+
+function pickPhotoFor(key){
+  if (typeof CIGCROP === 'undefined'){
+    flash('这个版本没法在 App 里切图，请把照片发给助手。', 'err');
+    return;
+  }
+  /* 目标记在 input 自己身上，而不是一个闭包变量。两个理由：
+     ① 用户可能连着给不同的表换照片，"选中文件时到底给谁换"不能靠先后顺序猜；
+     ② 设备验证脚本没法点这个按钮（点了会弹系统选择器、把 App 推到后台），
+        它需要一个方式直说"给哪张表换"然后注入文件。 */
+  const inp = $('#shootfile');
+  inp.dataset.key = key;
+  inp.value = '';
+  inp.click();
+}
+
+async function doPhotoSwap(t, file){
+  busyOn('正在识别表格…', '先在照片里找表格线，再把每个商品格切出来。');
+  try {
+    const old = plainTable(t, t.id, { src: t.src });     // 备份里记下它本来是什么
+    const r = await CIGCROP.processPhoto(file, old, (d, tot, ph) => {
+      if (ph === 'cut') busySet(d / tot, '正在切第 ' + d + ' / ' + tot + ' 格…');
+    });
+
+    const nt = plainTable({
+      name: t.name, date: t.date, note: t.note, colLabels: t.colLabels,
+      nCol: r.nCol, nRow: r.nRow, rot: r.ang, blank: r.unnamed,
+      upd: nowStr(), sheetImg: r.sheetImg, items: r.items,
+    }, t.id, { from: 'photo' });
+    nt.rev = Date.now();
+
+    if (STORE_OK){
+      await dbPut(Object.assign({}, old, { id: UKEY + t.name }));   // 备份，给「撤销」用
+      await dbPut(nt);
+    }
+    const at = IMP.findIndex(x => x.id === nt.id);
+    if (at >= 0) IMP[at] = nt; else IMP.push(nt);
+    // 同名内置表让位 —— 跟"导入同名表包"是同一个语义
+    const bk = 'b:' + nt.name;
+    let hid = false;
+    if (RAW.tables.some(x => x.name === nt.name) && !REMOVED.has(bk)){
+      REMOVED.add(bk); await saveRemoved(); hid = true;
+    }
+    UNDO.add(nt.name);
+    rebuild(); applyAll();
+
+    let m = '✅ 已用新照片更新「' + esc(nt.name) + '」：切好 <b>' + r.items.length +
+            '</b> 个商品格' + (r.nRow !== t.nRow ? '（' + t.nRow + ' 行 → ' + r.nRow + ' 行）' : '') +
+            '，商品名沿用上一版。<br>点开两个商品看一眼价格对不对；切错了可以点「撤销」。';
+    if (r.unnamed > 1){
+      m += '<br>⚠️ 有 <b>' + (r.unnamed - 1) + '</b> 格在上一版里没有对应的名字（新加的行？），' +
+           '这几格暂时搜不到 —— 把照片发给助手补一下。';
+    }
+    if (hid) m += '<br>原来那张内置的「' + esc(nt.name) + '」已放进「已移除」，随时可恢复。';
+    flash(m, 'ok');
+  } catch (e) {
+    const c = e && e.code;
+    if (c === 'NOGRID'){
+      flash('⚠️ <b>这张照片里没找到表格线，切不了。</b><br>' +
+            '常见原因：拍歪了、表格没拍全、离得太远/太糊。<br>' +
+            '把整张表拍正、四边都进画面再试一次；或者把照片发给助手处理。', 'err');
+    } else if (c === 'LAYOUT'){
+      flash('⚠️ <b>这张照片跟「' + esc(t.name) + '」的格式对不上。</b><br>' +
+            '照片里切出 <b>' + e.got + ' 列</b>，原来的表是 <b>' + e.want + ' 列</b>。<br>' +
+            '「换照片」只支持"同一张表重新拍一遍"；要是换了纸、改了列数，' +
+            '或者选错了照片，就得让助手重新做一次。', 'err');
+    } else if (c === 'ROWS'){
+      flash('⚠️ <b>这张照片的行数跟「' + esc(t.name) + '」差太多</b>（照片里 ' + e.got +
+            ' 行，原来 ' + e.want + ' 行）。<br>多半不是同一张表，或者选错了照片。' +
+            '请把照片发给助手处理。', 'err');
+    } else if (c === 'EMPTY'){
+      flash('⚠️ 切出来的格子全是空的，这张照片跟原来的表格式对不上。请让助手处理。', 'err');
+    } else {
+      flash('⚠️ 处理这张照片出错了：' + esc((e && e.message) || String(e)) +
+            '<br>把照片发给助手处理。', 'err');
+    }
+  } finally {
+    busyOff();
+  }
+}
+
+/* 撤销上一次换照片。备份里记着"原来那张是内置的还是导入的"，
+   内置的删掉本机这份就自动回到打包在 App 里的那张。 */
+async function doUndo(name){
+  if (!STORE_OK){ flash('这台设备上存不了数据，撤销不了。', 'err'); return; }
+  let all;
+  try { all = await dbAll(); }
+  catch (e) { flash('读本机存档失败：' + esc((e && e.message) || String(e)), 'err'); return; }
+  const u = all.find(x => x.id === UKEY + name);
+  if (!u){ flash('没有可撤销的记录（已经撤过，或者清了 App 数据）。', 'err'); return; }
+  try {
+    if ((u.src || 'builtin') === 'builtin'){
+      await syncMarkDel(name);
+      await dbDel(name);
+      IMP = IMP.filter(x => x.id !== name);
+      REMOVED.delete('b:' + name); await saveRemoved();
+    } else {
+      const back = Object.assign({}, u, { id: name });
+      delete back.src;
+      back.rev = Date.now();
+      await dbPut(back);
+      const at = IMP.findIndex(x => x.id === name);
+      if (at >= 0) IMP[at] = back; else IMP.push(back);
+    }
+    await dbDel(UKEY + name);
+  } catch (e) {
+    flash('撤销失败：' + esc((e && e.message) || String(e)), 'err'); return;
+  }
+  UNDO.delete(name);
+  rebuild(); applyAll();
+  flash('已退回「' + esc(name) + '」上一次换照片前的样子。');
+}
+
+/* ================== 通用输入框（起表名 / 给商品改名） ==================
+   ⚠️ 不用原生 prompt()：WebView 壳没实现 WebChromeClient.onJsPrompt 的话，
+   它会**静默**返回 null（不报错、也不弹），店主只会觉得"点了没反应"。 */
+let askDone = null;
+
+function askText(opt){
+  return new Promise(res => {
+    $('#askttl').textContent = opt.title || '';
+    $('#askbd').innerHTML = opt.hint || '';
+    $('#askinp').value = opt.preset || '';
+    $('#askinp').placeholder = opt.ph || '';
+    $('#askcancel').textContent = opt.cancel || '取消';
+    $('#askok').textContent = opt.ok || '好';
+    $('#askname').classList.add('on');
+    askDone = res;
+    setTimeout(() => { const i = $('#askinp'); i.focus(); i.select(); }, 60);
+  });
+}
+/* 确认框 —— 复用同一个弹层，把输入框藏起来。
+   为什么需要：有些操作用一次点击就能改一大片数据（比如「套用名字」一次改 300 多格），
+   必须让店主看清楚再点。⚠️ 输入框的显示状态在 askClose 里统一还原 —— 这个弹层是共用的，
+   忘了还原的话「改名」就没有输入框了。 */
+function askOk(opt){
+  return new Promise(res => {
+    $('#askttl').textContent = opt.title || '';
+    $('#askbd').innerHTML = opt.hint || '';
+    $('#askinp').style.display = 'none';
+    $('#askcancel').textContent = opt.cancel || '取消';
+    $('#askok').textContent = opt.ok || '好';
+    $('#askname').classList.add('on');
+    askDone = v => res(v === true);
+  });
+}
+function askClose(v){
+  $('#askname').classList.remove('on');
+  $('#askinp').style.display = '';     // 确认框会把输入框藏起来，这里统一还原
+  const r = askDone; askDone = null;
+  if (r) r(v);
+}
+$('#askok').onclick = () => {
+  if ($('#askinp').style.display === 'none'){ askClose(true); return; }   // 确认框：不用输入
+  const v = $('#askinp').value.trim();
+  if (!v){ $('#askinp').focus(); return; }      // 空着点「好」不算数，别让他把名字清成空的
+  askClose(v);
+};
+$('#askcancel').onclick = () => askClose(null);
+$('#askinp').addEventListener('keydown', e => {
+  if (e.key === 'Enter'){ e.preventDefault(); $('#askok').click(); }
+});
+
+/* ================== 用照片加表（不经过助手也能加新品类） ==================
+   为什么要有它：店主想「同时添加很多张照片」，可按原来的设计，新品类必须由助手读照片、
+   做表包 —— 他得等。这条路让他自己几秒就能加。
+
+   ⚠️ 代价必须说清楚：**App 不认字**，读不出"飞天茅台"。所以这样加的表里商品名是
+   「表名 + 序号」（酒水 1、酒水 2…）—— 能搜表名、能翻网格、能点开看价格，
+   但**搜不到具体商品名**（价格仍然是照片原样，这一点不受影响）。
+
+   想要真名字有两条路，都不耽误他先把手头的表用起来：
+     ① 看图时点右上角「改名」，给常卖的那几个补上 → 立刻能搜；
+     ② 把照片发给助手做一版**同名**表包 —— 表包 id 就是表名（plib.table_payload 里
+        `'id': name`），导入时 doImport 按 id 命中 → 原地替换，名字全带上。
+
+   ⚠️ 表名不能重名：重名就会覆盖原来那张（id 相同）。所以这里**默认给一个不冲突的
+   名字**（酒水 → 酒水 2），想覆盖得店主自己手动改回去。宁可多一张，不可静默少一张。
+*/
+
+/** 起一个不跟现有表冲突的名字 */
+function freeName(base){
+  base = String(base || '').trim() || '新表';
+  if (!TBL.some(t => t.name === base)) return base;
+  for (let i = 2; i < 99; i++){
+    const c = base + ' ' + i;
+    if (!TBL.some(t => t.name === c)) return c;
+  }
+  return base + ' ' + Date.now();
+}
+
+/** 照片文件名能不能当表名？相机/截图/微信给的那串名字当表名没意义，宁可留空让他自己写 */
+function guessName(fn){
+  const s = String(fn || '').replace(/\.[^.]+$/, '').trim();
+  if (!s || s.length > 16) return '';
+  if (/^(img|image|photo|pic|dsc|dscn|mvimg|screenshot|screen|capture|wx_camera|mmexport|micromsg|clipboard)/i.test(s)) return '';
+  if (/^(微信图片|截屏|屏幕截图)/.test(s)) return '';
+  if (/^\d{5,}$/.test(s)) return '';
+  return s.slice(0, 12);
+}
+
+async function doAddPhotos(files){
+  if (typeof CIGCROP === 'undefined'){
+    flash('这个版本没法在 App 里切图，请把照片发给助手。', 'err');
+    return;
+  }
+  const arr = Array.from(files || []);
+  if (!arr.length) return;
+  const add = [], bad = [], addedNames = [];
+  for (let k = 0; k < arr.length; k++){
+    const f = arr[k];
+    /* 照片现在从「导入表包」也可能进来（见 acceptFiles），而店主要更新价格时最容易
+       走错的就是这一步。所以已有表时，第一句先说"点错了怎么退"，再说怎么起名。 */
+    const wrongWay = TBL.length
+      ? '<span style="color:var(--warnfg)">⚠️ 想用这张照片<b>更新</b>某张表的价格？' +
+        '那就点「取消」，再到下面那张表上点「<b>换照片</b>」—— 那边的商品名会沿用上一版。' +
+        '</span><br>这里是把照片<b>新增成一张表</b>。<br><br>'
+      : '';
+    let nm = await askText({
+      title: arr.length > 1 ? ('第 ' + (k + 1) + ' / ' + arr.length + ' 张：这张表叫什么？')
+                            : '这张表叫什么名字？',
+      hint: wrongWay +
+            '名字就是搜索用的关键词，比如「酒水」「饮料」。<br>' +
+            '里面的商品名先用「表名 + 序号」编着（App 不认字，读不出商品名）。<br>' +
+            'App 里要是已经有版式一样（列数相同）的表，加好后能在管理页「套用」它的商品名；' +
+            '其余的常卖商品，看图时点右上角「改名」补上就能搜。',
+      preset: freeName(guessName(f.name)),
+      ph: '比如：酒水',
+      cancel: arr.length > 1 ? '跳过这张' : '算了',
+    });
+    /* ⚠️ 表名重了会**原地覆盖**原来那张表（表包 id 就是表名，见文件头注释）。
+       默认名字已经避开重名，但店主可以手打 —— 手滑的代价是"一张有名字的表
+       被编号版顶掉"，那比多问一次严重得多，所以这里必须拦。 */
+    while (nm && TBL.some(t => t.name === nm)){
+      const dup = nm;
+      nm = await askText({
+        title: '已经有一张叫「' + dup + '」的表了',
+        hint: '换个名字就行（同一个名字会把原来那张<b>整个换掉</b>）。<br>' +
+              '要是你想做的其实是<b>用这张照片更新「' + esc(dup) + '」的价格</b>，' +
+              '那该点「取消」，再去下面那张表上点「<b>换照片</b>」。',
+        preset: freeName(dup),
+        ph: '换个名字',
+        cancel: '算了',
+      });
+    }
+    if (!nm) continue;
+    const id = nm;                    // ← 表包 id 就是表名，所以同名的正式表包能原地替换它
+
+    busyOn('正在识别表格…', arr.length > 1 ? ('第 ' + (k + 1) + ' / ' + arr.length + ' 张') : '');
+    try {
+      let seq = 0;
+      const r = await CIGCROP.processPhoto(f, null, (d, tot, ph) => {
+        if (ph === 'cut') busySet(d / tot, '正在切第 ' + d + ' / ' + tot + ' 格…');
+      }, {
+        // 没有旧表可继承 —— 用「表名 + 序号」现取。cutAll 是按 ci→ri 遍历的，
+        // 正好就是阅读顺序，所以这个自增计数器就是"第几个商品"。
+        nameFor: () => nm + ' ' + (++seq),
+      });
+      const nt = plainTable({
+        name: nm, date: nowStr(), note: '', colLabels: [],
+        nCol: r.nCol, nRow: r.nRow, rot: r.ang, blank: 0, upd: '',
+        sheetImg: r.sheetImg, items: r.items,
+      }, id, { from: 'shot' });
+      nt.rev = Date.now();
+      if (STORE_OK) await dbPut(nt);
+      const at = IMP.findIndex(x => x.id === id);
+      if (at >= 0) IMP[at] = nt; else IMP.push(nt);
+      add.push(nm + '（' + r.items.length + ' 个商品）');
+      addedNames.push(nm);
+    } catch (e) {
+      const c = e && e.code;
+      const why = c === 'NOGRID' ? '照片里没找到表格线（拍歪了？没拍全？太糊？）'
+                : c === 'EMPTY' ? '一个商品格都没切出来'
+                : ((e && e.message) || String(e));
+      bad.push(f.name + '（想叫「' + nm + '」） → ' + why);
+    } finally {
+      busyOff();
+    }
+  }
+
+  if (!add.length && !bad.length){ flash('这次一张都没加（都被跳过了）。', 'err'); return; }
+  if (add.length) curT = -1;   // 同上：加完表就把搜索范围放开，别让筛选把新表挡在外面
+  rebuild(); applyAll();
+  const parts = [];
+  if (add.length) parts.push('✅ 已加：' + add.map(esc).join('、'));
+  if (bad.length) parts.push('⚠️ 没加成：<br>' + bad.map(esc).join('<br>'));
+  if (add.length){
+    // 本机刚好有版式一样的表 → 直接点出"能一键套名字"，他就不会去一个个改名了
+    const can = [];
+    for (const nm of addedNames){
+      const T = TBL.find(x => x.name === nm);
+      const s = T && nameSrc(T);
+      if (s) can.push('「' + esc(T.name) + '」← 「' + esc(s.t.name) + '」');
+    }
+    parts.push('商品名现在只是<b>编号</b>（App 不认字，读不出照片上的字），' +
+               '所以搜「中华」「茅台」这类是搜不到的。');
+    if (can.length){
+      parts.push('💡 本机有版式一样的表 → 点下面那行「<b>套用商品名</b>」，一下全填上：' + can.join('、') + '。');
+    } else {
+      /* 没有能借名字的表时，原来那句"其余的：点开图 → 右上角「改名」"对一张几百格的新表
+         等于没说 —— 照做就是按 400 多次，实际结果还是"这张表搜不了"。
+         2026-09-25 店主加完表就来问「导入新表还是不能搜索」，所以这里必须把
+         **唯一能把整张表一次填满**的那条路写出来（同名表包 = 原地替换，不用先删）。 */
+      parts.push('本机<b>没有版式一样</b>的表能借名字（列数一样才敢借）。');
+      parts.push('· 想让<b>整张表都能搜</b>：把这张照片发给助手，做成<b>表名一样</b>的表包，' +
+                 '回来在上面「<b>导入表包</b>」导进去 —— 会<b>原地替换</b>这张表，不用先删，名字一次全有。');
+      parts.push('· 只让<b>常卖的几个</b>能搜：点开商品图 → 右上角「<b>改名</b>」。');
+    }
+  }
+  flash(parts.join('<br>'), add.length ? 'ok' : 'err');
+}
+
+/* ================== 给单个商品改名 ==================
+   为什么要有它：「照片加的」表里商品名只是编号，搜不到具体商品。
+   店主看着图给常卖的那几个写上名字，搜索立刻就覆盖了大部分需求。
+   改名是**就地**的：只动这一格的 n，图和位置都不变。 */
+async function doRename(it){
+  const T = TBL[it.t];
+  if (!T) return;
+  if (T.src === 'builtin'){
+    flash('「' + esc(T.name) + '」是打包在 App 里的示例表，改不了名字。' +
+          '在管理页给它「换照片」之后就能改了。', 'err');
+    return;
+  }
+  const imp = IMP.find(x => x.id === T.id);
+  const o = imp && (imp.items || []).find(x => +x.c === +it.c && +x.r === +it.r);
+  if (!o){ flash('找不到这个商品的本机存档，改不了。', 'err'); return; }
+  const numLike = numName(T, it.n);   // 和搜索失败提示共用一份判断（见 numName）
+  const nm = await askText({
+    title: '这个商品叫什么？',
+    hint: '起好名字以后就能搜到它了。比如把「' + esc(it.n) + '」改成「飞天茅台」。<br>' +
+          '改错了随时能再改，图不会动。',
+    preset: numLike ? '' : it.n,
+    ph: '比如：飞天茅台',
+  });
+  if (!nm) return;
+  o.n = nm;
+  it.n = nm;      // it、TBL[..].items、IT 里是**同一个对象**（rebuild 时一起 push 的），改一处三处都变
+  if (STORE_OK){
+    imp.rev = Date.now();
+    try { await dbPut(imp); }
+    catch (e){ flash('改名存不进本机：' + esc((e && e.message) || String(e)), 'err'); return; }
+  }
+  paint(); applyAll();
+  flash('已改名为「' + esc(nm) + '」，现在搜得到它了。');
+}
+
+$('#vrename').onclick = () => { const it = list[cur]; if (it) doRename(it); };
+
+/* ================== 套用名字 ==================
+   为什么要有它：用照片加的表里商品名只是编号（App 不认字），搜不到具体商品。
+   而最常见的情形恰恰是"**同一张表重新拍了一遍**" —— 名字其实早就躺在另一张表里
+   （内置的示例表、或者以前导入过的同名表包）。一个一个改名要按 300 多次，
+   套用名字是一下子。
+
+   ⚠️ 只改 n（名字），图和位置**一个字节都不动** —— 所以永远可逆，也不会报错价。
+   ⚠️ 已经改过的名字绝不覆盖：只填"还是编号"的那些。所以重复点不会越套越乱。
+   ⚠️ 套错表 = 按名字搜出来的图是别的商品 → **必须让店主确认**（把两边行列数都摆出来），
+      并且套完给他「撤销」。 */
+async function doInherit(name){
+  const T = TBL.find(t => t.name === name);
+  if (!T){ flash('找不到这张表。', 'err'); return; }
+  if (T.src !== 'shot'){ flash('只有「照片加的」表才需要套名字 —— 这张表里的商品名本来就是真的。', 'err'); return; }
+  const imp = IMP.find(x => x.id === T.id);
+  if (!imp){ flash('找不到这张表的本机存档，改不了。', 'err'); return; }
+  const src = nameSrc(T);
+  if (!src){
+    flash('本机没有版式一样的表可以借名字（列数得相同才敢套）。<br>' +
+          '可以点开图 → 右上角「<b>改名</b>」，给常卖的那几个补上；' +
+          '或者把这张照片发给助手做一版同名表包。', 'err');
+    return;
+  }
+  const S = src.t;
+  const ok = await askOk({
+    title: '把「' + esc(S.name) + '」的商品名套到「' + esc(T.name) + '」上？',
+    hint: '两边的列数一样（都是 <b>' + T.nCol + ' 列</b>）：<br>' +
+          '　「' + esc(S.name) + '」' + S.nRow + ' 行 <span style="color:var(--dim)">（' + esc(src.tag) + '）</span><br>' +
+          '　「' + esc(T.name) + '」' + T.nRow + ' 行<br>' +
+          '会填上 <b>' + src.gain + ' 格</b>；<b>图片和价格一个像素都不动</b>，改错了能「撤销」。<br>' +
+          '<span style="color:var(--warnfg)">⚠️ 只有确定这两张是同一张表才套 —— 套错了，' +
+          '按名字搜出来的图可能就是别的商品。</span>',
+    ok: '套用名字', cancel: '再想想',
+  });
+  if (!ok) return;
+
+  // 先把旧样子备份下来（备份里记着它是 shot，撤销能退回"编号版"）
+  if (STORE_OK){
+    try {
+      await dbPut(Object.assign(plainTable(imp, imp.id, { src: T.src, from: 'shot' }),
+                                { id: UKEY + T.name }));
+    } catch (e) { flash('存备份失败，没敢改：' + esc((e && e.message) || String(e)), 'err'); return; }
+  }
+  const m = new Map();
+  for (const x of (S.items || [])) if (x.n) m.set((+x.c) + ',' + (+x.r), x.n);
+  let got = 0;
+  for (const x of imp.items){
+    if (!numName(T, x.n)) continue;                       // 店主自己改过的名字，不动
+    const v = m.get((+x.c) + ',' + (+x.r));
+    if (!v || numName(S, v)) continue;                    // 源表那格也没名字
+    x.n = v; got++;
+  }
+  if (!got){ flash('没有可套的格子（名字都已经有了？）。', 'err'); return; }
+  if (STORE_OK){
+    try { await dbPut(imp); }
+    catch (e) { flash('名字存不进本机：' + esc((e && e.message) || String(e)), 'err'); return; }
+  }
+  UNDO.add(T.name);
+  const rest = (imp.items || []).filter(x => numName(T, x.n)).length;
+  rebuild(); applyAll();
+  flash('✅ 已把「' + esc(S.name) + '」的商品名套到「' + esc(T.name) + '」上：' +
+        '<b>' + got + '</b> 格拿到名字' +
+        (rest ? '，还剩 ' + rest + ' 格是编号（源表里那几格本来就没名字）' : '') +
+        '。<br>搜个商品试试；套错了点「撤销」退回编号版。', 'ok');
+}
+
+$('#newfile').addEventListener('change', async e => {
+  const fs = Array.from(e.target.files || []);
+  if (fs.length) await doAddPhotos(fs);
+  e.target.value = '';     // 处理完再清，免得 File 提前失效（同一张照片还能再选一次）
+});
+
+
+$('#mgrlist').addEventListener('click', e => {
+  const del = e.target.closest('button[data-del]');
+  if (del) return doDelete(del.dataset.del);
+  const rn = e.target.closest('button[data-ren]');
+  if (rn) return renameTable(rn.dataset.ren);
+  const ph = e.target.closest('button[data-photo]');
+  if (ph) return pickPhotoFor(ph.dataset.photo);
+  const un = e.target.closest('button[data-undo]');
+  if (un) return doUndo(un.dataset.undo);
+  const ih = e.target.closest('button[data-inh]');
+  if (ih){
+    const t = TBL.find(x => x.key === ih.dataset.inh);
+    if (t) doInherit(t.name);
+    return;
+  }
+});
+/* 「换照片」用的文件选择器。移动端必须由 <label> 或真实点击触发，
+   这里由「换照片」按钮的 click 同步调 .click()，所以一直有用户激活。 */
+$('#shootfile').addEventListener('change', e => {
+  const f = (e.target.files || [])[0];
+  const key = e.target.dataset.key;
+  e.target.value = '';          // 允许同一个文件连选两次
+  delete e.target.dataset.key;
+  const t = key ? TBL.find(x => x.key === key) : null;
+  if (f && t) doPhotoSwap(t, f);
+});
+$('#mgrhidden').addEventListener('click', e => {
+  const p = e.target.closest('button[data-purge]');
+  if (p) return doPurge(p.dataset.purge);
+  const b = e.target.closest('button[data-res]');
+  if (b) doRestore(b.dataset.res);
+});
+$('#impfile').addEventListener('change', e => {
+  const fs = Array.from(e.target.files || []);
+  e.target.value = '';                     // 允许连续导入同一个文件
+  if (fs.length) acceptFiles(fs);          // 照片/表包在这里分流，别直接调 doImport
+});
+/* 也支持把文件直接拖进「管理」页（照片和表包都行） */
+const mgrPanel = $('#p-mgr');
+mgrPanel.addEventListener('dragover', e => { e.preventDefault(); mgrPanel.classList.add('over'); });
+mgrPanel.addEventListener('dragleave', () => mgrPanel.classList.remove('over'));
+mgrPanel.addEventListener('drop', e => {
+  e.preventDefault(); mgrPanel.classList.remove('over');
+  const fs = Array.from((e.dataTransfer && e.dataTransfer.files) || []);
+  if (fs.length) acceptFiles(fs);
+});
+
+/* ================== 整体重绘（表清单变了就调它） ================== */
+function applyAll(){
+  $('#tsub').textContent = !TBL.length
+    ? '还没有任何表'
+    : (MULTI ? TBL.length + ' 张表 · 共 ' + IT.length + ' 个商品'
+             : tlabel(TBL[0]) + ' 价目表 · 共 ' + IT.length + ' 个商品');
+  $('#allhint').textContent = MULTI
+    ? '按表分段、表内按原表的列分组。点任意商品名即可看图。'
+    : '按原表的列分组。点任意商品名即可看图。';
+  renderFilters();
+  buildAll();
+  renderMgr();
+  showSheet(Math.max(0, Math.min(sheetT, TBL.length - 1)));
+  lastList = renderResults($('#q').value);
+}
+
+/* ================== 启动 ================== */
+(async function boot(){
+  try { db = await idbOpen(); STORE_OK = true; }
+  catch (e) { STORE_OK = false; STORE_WHY = (e && (e.name || e.message)) || '未知原因'; }
+
+  if (STORE_OK){
+    try {
+      const all = await dbAll();
+      // u: 前缀的是「换照片」的备份，不是表 —— 不挑出来的话会多出一张幽灵表
+      UNDO = new Set(all.filter(t => t && String(t.id).indexOf(UKEY) === 0)
+                        .map(t => String(t.id).slice(UKEY.length)));
+      IMP = all.filter(t => t && String(t.id).indexOf(UKEY) !== 0 &&
+                            t.name && Array.isArray(t.items) && t.items.length);
+    } catch (e) { IMP = []; UNDO = new Set(); }
+  }
+  REMOVED = await loadRemoved();
+  // 同一张内置表同时挂着"移除"和"彻底删"两个标记时，以彻底删为准。
+  // （正常不会同时存在，但名单是持久化的，跨版本升级时挡一道。）
+  for (const k of [...REMOVED]) if (k.slice(0, 2) === XKEY) REMOVED.delete('b:' + k.slice(2));
+  rebuild();
+  applyAll();
+  renderSyncUI();
+  window.__ready = true;                   // 自检脚本等这个标记
+})();
+if (location.hash === '#all') document.querySelector('[data-tab="p-all"]').click();
+
+/* ================== 返回键钩子（安卓壳用） ==================
+   壳的 MainActivity.onBackPressed 会调这个函数，按返回值决定这次返回被消费了没有：
+     true  → 页面自己处理掉了（关掉大图 / 切回了搜索页），不要退 App
+     false → 页面已经没东西可退了，交给系统退出
+   顺序：全屏看图 → 非搜索页 → 退出。
+   浏览器里用不上（浏览器有自己的返回栈），留着没有任何副作用。
+   ⚠️ android/build.js 有一道检查：页面里没有这个函数就拒绝打包 ——
+      少了它返回键会变成"在任何页面都直接退出 App"。 */
+window.__backHook = function(){
+  // 输入框开着时，返回键 = 取消。不然会直接切回搜索页 / 退出 App，名字问到一半就断了。
+  if ($('#askname').classList.contains('on')){ askClose(null); return true; }
+  if (viewer.classList.contains('on')){ closeViewer(); return true; }
+  const on = document.querySelector('.tabs button.on');
+  if (on && on.dataset.tab !== 'p-search'){
+    document.querySelector('.tabs button[data-tab="p-search"]').click();
+    return true;
+  }
+  return false;
+};
+
+/* ================== 同步 UI ================== */
+function renderSyncUI(){
+  syncGet().then(c => {
+    const on = $('#syncOn'); if (on) on.checked = !!c.enabled;
+    const box = $('#syncbox'); if (box) box.style.display = c.enabled ? '' : 'none';
+    if (location.protocol === 'http:' || location.protocol === 'https:'){
+      $('#syncsrc').textContent = '当前就是网页版，地址留空即可（和本页同一台服务器）。';
+    } else {
+      $('#syncsrc').textContent = '手机 App：填你部署的服务器的地址（含 http(s):// 和端口）。';
+    }
+    $('#syncUrl').value = c.url || '';
+    $('#syncUser').value = c.user || '';
+    $('#syncPass').value = c.pass || '';
+    $('#syncLast').textContent = c.last ? ('上次同步：' + new Date(c.last).toLocaleString()) : '还没同步过';
+    // 打开管理页时校正自动同步状态：启用则启动（含立即拉一次），否则停
+    if (c.enabled) autoSyncStart(); else autoSyncStop();
+  });
+}
+function syncSaveFromUI(){
+  return syncGet().then(c => {
+    c.enabled = $('#syncOn').checked;
+    c.url = $('#syncUrl').value.trim();
+    c.user = $('#syncUser').value.trim();
+    c.pass = $('#syncPass').value;
+    return syncSet(c);
+  });
+}
+$('#syncOn').addEventListener('change', () => {
+  $('#syncbox').style.display = $('#syncOn').checked ? '' : 'none';
+  syncSaveFromUI().then(() => {
+    if ($('#syncOn').checked) autoSyncStart(); else autoSyncStop();
+  });
+});
+$('#syncShowPass').addEventListener('click', () => {
+  const k = $('#syncPass');
+  if (!k) return;
+  k.type = k.type === 'password' ? 'text' : 'password';
+  $('#syncShowPass').textContent = k.type === 'password' ? '显示' : '隐藏';
+});
+async function syncRunUI(){
+  window.__inSync = true;          // 手动同步期间屏蔽落库钩子，避免触发自动同步回环
+  try {
+    const btn = $('#syncNow'); btn.disabled = true; $('#syncStat').textContent = '同步中…';
+    const r = await doSync();
+    btn.disabled = false;
+    if (r.ok) $('#syncStat').textContent = '✅ 已同步（拉取 ' + r.pulled + ' 表、删 ' + r.pulledDel + ' 表）';
+    else $('#syncStat').textContent = '⚠️ ' + r.msg;
+    renderSyncUI();
+  } finally { window.__inSync = false; }
+}
+$('#syncNow').addEventListener('click', async () => {
+  await syncSaveFromUI();
+  await syncRunUI();
+});
+$('#syncReg').addEventListener('click', async () => {
+  await syncSaveFromUI();
+  const c = await syncGet();
+  if (!(c.user || '').trim() || !(c.pass || '')){
+    $('#syncStat').textContent = '⚠️ 先填用户名和密码';
+    return;
+  }
+  const btn = $('#syncReg'); btn.disabled = true; $('#syncStat').textContent = '注册中…';
+  const a = await syncAuth(c, true);
+  btn.disabled = false;
+  if (!a.ok){ $('#syncStat').textContent = '⚠️ ' + a.msg; return; }
+  await syncRunUI();
+});
+</script>
+</body>
+</html>

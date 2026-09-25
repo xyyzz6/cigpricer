@@ -1,0 +1,18 @@
+{
+  "data-share": {
+    "shares": [
+      {
+        "name": "cigpricersync",
+        "permission": {
+          "rw": ["cigpricersync"]
+        }
+      },
+      {
+        "name": "cigpricersync/data",
+        "permission": {
+          "rw": ["cigpricersync"]
+        }
+      }
+    ]
+  }
+}

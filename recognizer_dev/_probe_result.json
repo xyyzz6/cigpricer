@@ -1,0 +1,357 @@
+{
+ "url": "https://cig-price-ocr.app.workbuddy.host/#auto",
+ "stage": "done",
+ "errors": [],
+ "logs": [
+  "SDK 已加载：OK",
+  "origin = https://cig-price-ocr.app.workbuddy.host",
+  "自动模式：先读模型列表，再把 4 张测试图都跑一遍",
+  "=== 模型列表：共 30 个 ===",
+  "  auto  | Auto  | enabled=true disabled=undefined 图片=true 关多模态=false cap=null",
+  "  hy3  | Hy3  | enabled=true disabled=undefined 图片=true 关多模态=false cap=null",
+  "  hy3-x  | Hy3  | enabled=true disabled=undefined 图片=true 关多模态=false cap=null",
+  "  hy4-preview  | Hy4 preview  | enabled=true disabled=undefined 图片=true 关多模态=false cap=null",
+  "  hy4-preview-x  | Hy4 preview  | enabled=true disabled=undefined 图片=true 关多模态=false cap=null",
+  "  default  | Default  | enabled=true disabled=undefined 图片=false 关多模态=undefined cap=null",
+  "  glm-5v-turbo  | GLM-5v-Turbo  | enabled=true disabled=undefined 图片=true 关多模态=undefined cap=null",
+  "  glm-5.3  | GLM-5.3  | enabled=true disabled=undefined 图片=true 关多模态=undefined cap=null",
+  "  glm-5.3-flash  | GLM-5.3-Flash  | enabled=true disabled=undefined 图片=true 关多模态=undefined cap=null",
+  "  glm-5.2  | GLM-5.2  | enabled=true disabled=undefined 图片=true 关多模态=undefined cap=null",
+  "  glm-5.1  | GLM-5.1  | enabled=true disabled=undefined 图片=false 关多模态=undefined cap=null",
+  "  glm-5.0  | GLM-5.0  | enabled=true disabled=undefined 图片=false 关多模态=true cap=null",
+  "  glm-4.7  | GLM-4.7  | enabled=true disabled=undefined 图片=false 关多模态=true cap=null",
+  "  glm-4.6  | GLM-4.6  | enabled=true disabled=undefined 图片=false 关多模态=true cap=null",
+  "  glm-4.6v  | GLM-4.6V  | enabled=true disabled=undefined 图片=true 关多模态=undefined cap=null",
+  "  minimax-m3  | MiniMax-M3  | enabled=true disabled=undefined 图片=true 关多模态=false cap=null",
+  "  minimax-m2.5  | MiniMax-M2.5  | enabled=true disabled=undefined 图片=false 关多模态=undefined cap=null",
+  "  kimi-k3-1  | Kimi-K3  | enabled=true disabled=undefined 图片=true 关多模态=undefined cap=null",
+  "  kimi-k2.8-preview  | Kimi-K2.8-Preview  | enabled=true disabled=undefined 图片=true 关多模态=undefined cap=null",
+  "  kimi-k2.7  | Kimi-K2.7-Code  | enabled=true disabled=undefined 图片=true 关多模态=undefined cap=null",
+  "  kimi-k2.6  | Kimi-K2.6  | enabled=true disabled=undefined 图片=true 关多模态=undefined cap=null",
+  "  kimi-k2.5  | Kimi-K2.5  | enabled=true disabled=undefined 图片=true 关多模态=undefined cap=null",
+  "  kimi-k2-thinking  | Kimi-K2-Thinking  | enabled=true disabled=undefined 图片=false 关多模态=undefined cap=null",
+  "  deepseek-v4-flash  | Deepseek-V4-Flash  | enabled=true disabled=undefined 图片=true 关多模态=undefined cap=null",
+  "  deepseek-v4.1-flash  | Deepseek-V4.1-Flash  | enabled=true disabled=undefined 图片=true 关多模态=undefined cap=null",
+  "  deepseek-v4-pro  | Deepseek-V4-Pro  | enabled=true disabled=undefined 图片=true 关多模态=undefined cap=null",
+  "  deepseek-v3-2-volc  | DeepSeek-V3.2  | enabled=true disabled=undefined 图片=false 关多模态=true cap=null",
+  "  hunyuan-2.0-thinking  | Hunyuan-2.0-Thinking  | enabled=true disabled=undefined 图片=false 关多模态=true cap=null",
+  "  hunyuan-chat  | Hunyuan-Turbos  | enabled=true disabled=undefined 图片=false 关多模态=true cap=null",
+  "  hunyuan-image-alpha  | Hunyuan Image Alpha  | enabled=true disabled=undefined 图片=undefined 关多模态=undefined cap=null",
+  "→ 可用能传图的模型：auto, hy3, hy3-x, hy4-preview, hy4-preview-x, glm-5v-turbo, glm-5.3, glm-5.3-flash, glm-5.2, glm-4.6v, minimax-m3, kimi-k3-1, kimi-k2.8-preview, kimi-k2.7, kimi-k2.6, kimi-k2.5, deepseek-v4-flash, deepseek-v4.1-flash, deepseek-v4-pro",
+  "--- 测试：PNG · 行1-31  模型=auto ---",
+  "  图片 assets/col1_a.png，base64 948 KB",
+  "  用时 11.0 秒，输出 154 字",
+  "  → 输出 31 行 / 应为 31 行；逐行完全一致 30/31 = 96.8%",
+  "--- 测试：JPEG · 行1-31  模型=auto ---",
+  "  图片 assets/col1_a.jpg，base64 259 KB",
+  "  用时 24.3 秒，输出 154 字",
+  "  → 输出 31 行 / 应为 31 行；逐行完全一致 30/31 = 96.8%",
+  "--- 测试：JPEG缩 · 行1-31  模型=auto ---",
+  "  图片 assets/col1_a_s.jpg，base64 123 KB",
+  "  用时 20.0 秒，输出 154 字",
+  "  → 输出 31 行 / 应为 31 行；逐行完全一致 30/31 = 96.8%",
+  "--- 测试：PNG · 行32-62  模型=auto ---",
+  "  图片 assets/col1_b.png，base64 1059 KB",
+  "  用时 10.5 秒，输出 162 字",
+  "  → 输出 31 行 / 应为 31 行；逐行完全一致 29/31 = 93.5%",
+  "=== 汇总 ===",
+  "  PNG · 行1-31 : 30/31 = 96.8%",
+  "  JPEG · 行1-31 : 30/31 = 96.8%",
+  "  JPEG缩 · 行1-31 : 30/31 = 96.8%",
+  "  PNG · 行32-62 : 29/31 = 93.5%"
+ ],
+ "models": [
+  {
+   "id": "auto",
+   "name": "Auto",
+   "enabled": true,
+   "supportsImages": true,
+   "disabledMultimodal": false,
+   "maxAllowedSize": 256000
+  },
+  {
+   "id": "hy3",
+   "name": "Hy3",
+   "enabled": true,
+   "supportsImages": true,
+   "disabledMultimodal": false,
+   "maxAllowedSize": 192000
+  },
+  {
+   "id": "hy3-x",
+   "name": "Hy3",
+   "enabled": true,
+   "supportsImages": true,
+   "disabledMultimodal": false,
+   "maxAllowedSize": 192000
+  },
+  {
+   "id": "hy4-preview",
+   "name": "Hy4 preview",
+   "enabled": true,
+   "supportsImages": true,
+   "disabledMultimodal": false,
+   "maxAllowedSize": 1000000
+  },
+  {
+   "id": "hy4-preview-x",
+   "name": "Hy4 preview",
+   "enabled": true,
+   "supportsImages": true,
+   "disabledMultimodal": false,
+   "maxAllowedSize": 1000000
+  },
+  {
+   "id": "default",
+   "name": "Default",
+   "enabled": true,
+   "supportsImages": false,
+   "maxAllowedSize": 56000
+  },
+  {
+   "id": "glm-5v-turbo",
+   "name": "GLM-5v-Turbo",
+   "enabled": true,
+   "supportsImages": true,
+   "maxAllowedSize": 200000
+  },
+  {
+   "id": "glm-5.3",
+   "name": "GLM-5.3",
+   "enabled": true,
+   "supportsImages": true,
+   "maxAllowedSize": 1000000
+  },
+  {
+   "id": "glm-5.3-flash",
+   "name": "GLM-5.3-Flash",
+   "enabled": true,
+   "supportsImages": true,
+   "maxAllowedSize": 1000000
+  },
+  {
+   "id": "glm-5.2",
+   "name": "GLM-5.2",
+   "enabled": true,
+   "supportsImages": true,
+   "maxAllowedSize": 1000000
+  },
+  {
+   "id": "glm-5.1",
+   "name": "GLM-5.1",
+   "enabled": true,
+   "supportsImages": false,
+   "maxAllowedSize": 200000
+  },
+  {
+   "id": "glm-5.0",
+   "name": "GLM-5.0",
+   "enabled": true,
+   "supportsImages": false,
+   "disabledMultimodal": true,
+   "maxAllowedSize": 200000
+  },
+  {
+   "id": "glm-4.7",
+   "name": "GLM-4.7",
+   "enabled": true,
+   "supportsImages": false,
+   "disabledMultimodal": true,
+   "maxAllowedSize": 200000
+  },
+  {
+   "id": "glm-4.6",
+   "name": "GLM-4.6",
+   "enabled": true,
+   "supportsImages": false,
+   "disabledMultimodal": true,
+   "maxAllowedSize": 168000
+  },
+  {
+   "id": "glm-4.6v",
+   "name": "GLM-4.6V",
+   "enabled": true,
+   "supportsImages": true,
+   "maxAllowedSize": 128000
+  },
+  {
+   "id": "minimax-m3",
+   "name": "MiniMax-M3",
+   "enabled": true,
+   "supportsImages": true,
+   "disabledMultimodal": false,
+   "maxAllowedSize": 512000
+  },
+  {
+   "id": "minimax-m2.5",
+   "name": "MiniMax-M2.5",
+   "enabled": true,
+   "supportsImages": false,
+   "maxAllowedSize": 200000
+  },
+  {
+   "id": "kimi-k3-1",
+   "name": "Kimi-K3",
+   "enabled": true,
+   "supportsImages": true,
+   "maxAllowedSize": 1000000
+  },
+  {
+   "id": "kimi-k2.8-preview",
+   "name": "Kimi-K2.8-Preview",
+   "enabled": true,
+   "supportsImages": true,
+   "maxAllowedSize": 1000000
+  },
+  {
+   "id": "kimi-k2.7",
+   "name": "Kimi-K2.7-Code",
+   "enabled": true,
+   "supportsImages": true,
+   "maxAllowedSize": 256000
+  },
+  {
+   "id": "kimi-k2.6",
+   "name": "Kimi-K2.6",
+   "enabled": true,
+   "supportsImages": true,
+   "maxAllowedSize": 256000
+  },
+  {
+   "id": "kimi-k2.5",
+   "name": "Kimi-K2.5",
+   "enabled": true,
+   "supportsImages": true,
+   "maxAllowedSize": 164000
+  },
+  {
+   "id": "kimi-k2-thinking",
+   "name": "Kimi-K2-Thinking",
+   "enabled": true,
+   "supportsImages": false,
+   "maxAllowedSize": 164000
+  },
+  {
+   "id": "deepseek-v4-flash",
+   "name": "Deepseek-V4-Flash",
+   "enabled": true,
+   "supportsImages": true,
+   "maxAllowedSize": 1000000
+  },
+  {
+   "id": "deepseek-v4.1-flash",
+   "name": "Deepseek-V4.1-Flash",
+   "enabled": true,
+   "supportsImages": true,
+   "maxAllowedSize": 1000000
+  },
+  {
+   "id": "deepseek-v4-pro",
+   "name": "Deepseek-V4-Pro",
+   "enabled": true,
+   "supportsImages": true,
+   "maxAllowedSize": 1000000
+  },
+  {
+   "id": "deepseek-v3-2-volc",
+   "name": "DeepSeek-V3.2",
+   "enabled": true,
+   "supportsImages": false,
+   "disabledMultimodal": true,
+   "maxAllowedSize": 96000
+  },
+  {
+   "id": "hunyuan-2.0-thinking",
+   "name": "Hunyuan-2.0-Thinking",
+   "enabled": true,
+   "supportsImages": false,
+   "disabledMultimodal": true,
+   "maxAllowedSize": 128000
+  },
+  {
+   "id": "hunyuan-chat",
+   "name": "Hunyuan-Turbos",
+   "enabled": true,
+   "supportsImages": false,
+   "disabledMultimodal": true
+  },
+  {
+   "id": "hunyuan-image-alpha",
+   "name": "Hunyuan Image Alpha",
+   "enabled": true
+  }
+ ],
+ "err": null,
+ "results": [
+  {
+   "test": "PNG · 行1-31",
+   "model": "auto",
+   "lines": 31,
+   "want": 31,
+   "exact": 30,
+   "acc": 96.8,
+   "bad": [
+    {
+     "r": 27,
+     "want": "6克双喜",
+     "got": "克双喜"
+    }
+   ],
+   "raw": "-\n-\n软珍品日子\n精品日子\n金樽日子\n细金尊日子\n城市之光\n金万象日子\n晶彩日子\n细支祥云日子\n祥和日子\n软芙蓉\n上海双喜\n勿忘我双喜\n细春天\n中支春天\n春天 自在\n中支清风春天\n春天幻影\n卡路里\n双喜 喜粤\n红邮喜\n工坊双喜\n金01双喜\n金花悦双喜\n逸品双喜\n6克双喜\n大喜红双喜\n合广喜\n软经典\n硬经典"
+  },
+  {
+   "test": "JPEG · 行1-31",
+   "model": "auto",
+   "lines": 31,
+   "want": 31,
+   "exact": 30,
+   "acc": 96.8,
+   "bad": [
+    {
+     "r": 27,
+     "want": "6克双喜",
+     "got": "克双喜"
+    }
+   ],
+   "raw": "-\n-\n软珍品日子\n精品日子\n金樽日子\n细金尊日子\n城市之光\n金万象日子\n晶彩日子\n细支祥云日子\n祥和日子\n软芙蓉\n上海双喜\n勿忘我双喜\n细春天\n中支春天\n春天 自在\n中支清风春天\n春天幻影\n卡路里\n双喜 喜粤\n红邮喜\n工坊双喜\n金01双喜\n金花悦双喜\n逸品双喜\n6克双喜\n大喜红双喜\n合广喜\n软经典\n硬经典"
+  },
+  {
+   "test": "JPEG缩 · 行1-31",
+   "model": "auto",
+   "lines": 31,
+   "want": 31,
+   "exact": 30,
+   "acc": 96.8,
+   "bad": [
+    {
+     "r": 27,
+     "want": "6克双喜",
+     "got": "克双喜"
+    }
+   ],
+   "raw": "-\n-\n软珍品日子\n精品日子\n金樽日子\n细金尊日子\n城市之光\n金万象日子\n晶彩日子\n细支祥云日子\n祥和日子\n软芙蓉\n上海双喜\n勿忘我双喜\n细春天\n中支春天\n春天 自在\n中支清风春天\n春天幻影\n卡路里\n双喜 喜粤\n红邮喜\n工坊双喜\n金01双喜\n金花悦双喜\n逸品双喜\n6克双喜\n大喜红双喜\n合广喜\n软经典\n硬经典"
+  },
+  {
+   "test": "PNG · 行32-62",
+   "model": "auto",
+   "lines": 31,
+   "want": 31,
+   "exact": 29,
+   "acc": 93.5,
+   "bad": [
+    {
+     "r": 32,
+     "want": "01软广喜",
+     "got": "软广喜"
+    },
+    {
+     "r": 33,
+     "want": "01合广喜",
+     "got": "合广喜"
+    }
+   ],
+   "raw": "01软广喜\n01合广喜\n细国喜\n硬世纪经典\n合1906双喜\n软1906双喜\n中支1906双喜\n软盛世双喜\n莲香双喜\n百年经典\n金尊五叶\n金五叶\n硬红五叶\n软红五叶\n软至尊\n合至尊\n紫红玫王\n精玫\n红椰树\n中支和谐玉溪\n硬玉溪\n软玉溪\n初心玉溪\n鑫中支玉溪\n硬和谐玉溪\n高配玉溪\n细绿玉溪\n尚善玉溪\n缤果玉溪\n细翡翠\n硬红塔山"
+  }
+ ],
+ "live": "01软广喜\n01合广喜\n细国喜\n硬世纪经典\n合1906双喜\n软1906双喜\n中支1906双喜\n软盛世双喜\n莲香双喜\n百年经典\n金尊五叶\n金五叶\n硬红五叶\n软红五叶\n软至尊\n合至尊\n紫红玫王\n精玫\n红椰树\n中支和谐玉溪\n硬玉溪\n软玉溪\n初心玉溪\n鑫中支玉溪\n硬和谐玉溪\n高配玉溪\n细绿玉溪\n尚善玉溪\n缤果玉溪\n细翡翠\n硬红塔山"
+}

@@ -1,0 +1,37 @@
+# ===== 大二进制 / 构建产物 =====
+build/*.apk
+build/*.apk.idsig
+build/pack/
+build/mock-vendor.log
+dist/
+deploy/
+_fpktest/
+# fpk 镜像层 & 构建缓存（均由 fpk-tools/build.sh 的 make_image.py 重新生成）
+fpk/app/image/
+fpk-tools/_blobcache/
+
+# ===== 诊断 / 数据 / 截图 =====
+_diag/
+shots/
+shots-apk/
+_probe.log
+inbox/
+tables/
+*.log
+
+# ===== 运行时敏感文件 =====
+secret.key
+store.json
+*.keystore
+
+# ===== 环境 / 工具 =====
+.venv/
+node_modules/
+.DS_Store
+
+# ===== Android 构建中间产物 =====
+android/build/
+
+# 保留：生成的单文件应用与服务器副本（产品本体）
+!build/index.html
+!build/烟价速查.html

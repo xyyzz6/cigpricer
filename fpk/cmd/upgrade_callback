@@ -1,0 +1,15 @@
+#!/bin/bash
+### 升级后执行：读回配置 → 新版离线镜像强制重新导入（应用文件在镜像里）→ 重建容器。
+### 数据目录在 data-share，升级不动。
+source "$(dirname "$0")/common"
+: > "${WARN_FILE}" 2>/dev/null
+
+load_conf
+render_compose
+ensure_dir "${DATA_DIR}"
+chmod -R 777 "${DATA_DIR}" 2>/dev/null
+
+load_image 1
+recreate_container
+
+exit 0

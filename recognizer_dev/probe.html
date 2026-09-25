@@ -1,0 +1,349 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>烟价认字 · 探针</title>
+<style>
+:root{--bg:#f4f5f7;--card:#fff;--line:#e2e5e9;--fg:#1a1d21;--dim:#6b7280;--ok:#0a7d33;--err:#c0392b;--pri:#c62828}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--fg);font:15px/1.6 -apple-system,"PingFang SC","Microsoft YaHei",sans-serif;padding:16px}
+.wrap{max-width:860px;margin:0 auto}
+h1{font-size:19px;margin:0 0 4px}
+.sub{color:var(--dim);font-size:13px;margin-bottom:14px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:14px;margin-bottom:12px}
+button{font:inherit;padding:9px 14px;border-radius:9px;border:1px solid var(--line);background:#fff;cursor:pointer}
+button.pri{background:var(--pri);color:#fff;border-color:var(--pri)}
+button:disabled{opacity:.45;cursor:default}
+pre{background:#0f1115;color:#d7dae0;padding:10px;border-radius:8px;overflow:auto;max-height:340px;font-size:12.5px;line-height:1.5;white-space:pre-wrap;word-break:break-all;margin:0}
+pre.live{max-height:300px}
+.row{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:8px}
+.row:last-child{margin-bottom:0}
+.tag{display:inline-block;padding:1px 7px;border-radius:6px;background:#eef1f5;font-size:12px;color:#374151}
+.ok{color:var(--ok)}.err{color:var(--err)}
+table{border-collapse:collapse;width:100%;font-size:13px}
+td,th{border-bottom:1px solid var(--line);padding:3px 6px;text-align:left;vertical-align:top}
+.bad{background:#fff2f2}
+select,input{font:inherit;padding:3px 5px;border:1px solid var(--line);border-radius:6px}
+h3{font-size:14px;margin:0 0 8px}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>烟价认字 · 探针</h1>
+  <div class="sub">先只验一件事：大模型能不能把价目表的商品名读对。认准了再做完整工具。</div>
+
+  <div class="card">
+    <div class="row"><b>模型</b><span id="mstat" class="tag">未读取</span></div>
+    <div class="row">
+      <button id="bmodels">① 读模型列表</button>
+      <button id="brun" class="pri">② 认一列</button>
+      <button id="brunall">③ 把 4 张测试图都跑一遍</button>
+    </div>
+    <div class="row">
+      <label class="tag">测试图 <select id="imgsel"></select></label>
+    </div>
+  </div>
+
+  <div class="card"><h3>日志</h3><pre id="log"></pre></div>
+
+  <div class="card"><h3>模型正在读 <span id="livestat" class="tag"></span></h3><pre id="live" class="live"></pre></div>
+
+  <div class="card" id="rescard" style="display:none"><h3 id="restitle">逐行比对</h3><div id="diff"></div></div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@tencent-ai/workbuddy-cloud-sdk@dev/lib/index.global.js"></script>
+<script>
+/* CDN 拿不到就退到本地内置的那份（国内网络下 jsdelivr 不一定通） */
+if (!window.WorkBuddyCloud) { document.write('<scr' + 'ipt src="assets/sdk.js"></scr' + 'ipt>'); }
+</script>
+<script>
+(function () {
+  'use strict';
+
+  var PUB = {
+    resourceId: 'wbcs_M6ab1K88GHXOytnVFS3S0x',
+    endpoint: 'https://cig-price-ocr.app.workbuddy.host',
+    publishableKey: 'wbpk_F3MYyQG6vg9Oyu8LsDffZ7_raRK4f27A2GoupXsnsKwHSVwQMVwlMLp'
+  };
+
+  var SYS = '你是一个价目表转录员。用户给你一张价目表**某一列**的竖条图片，'
+          + '每一行是一格，格子里左边是商品名称、右边是批发价。'
+          + '你唯一要做的事：从上到下把每一格的**商品名称**读出来。'
+          + '只认图上的字，不要根据品牌常识去「补全」或改写，图上写什么就写什么（包括错别字）。'
+          + '特别注意：商品名**开头的数字或字母是名字的一部分**（如「6克双喜」「01软广喜」），'
+          + '必须原样读出来，绝不能省略。';
+
+  var TESTS = [
+    { name: '印刷 · 行1-31 · auto',    img: 'assets/col1_a.png', key: 'a', from: 1 },
+    { name: '印刷 · 行1-31 · glm-5v',  img: 'assets/col1_a.png', key: 'a', from: 1, model: 'glm-5v-turbo' },
+    { name: '印刷 · 行1-31 · kimi-k3', img: 'assets/col1_a.png', key: 'a', from: 1, model: 'kimi-k3-1' },
+    { name: '印刷 · 行1-31 · ds-v4.1', img: 'assets/col1_a.png', key: 'a', from: 1, model: 'deepseek-v4.1-flash' },
+    { name: '印刷 · 行32-62 · auto',   img: 'assets/col1_b.png', key: 'b', from: 32 },
+    { name: '手写价 · 行1-20 · auto',  img: 'assets/hand1.png',  key: 'h', from: 1 },
+    { name: '手写价 · 行1-20 · glm-5v', img: 'assets/hand1.png', key: 'h', from: 1, model: 'glm-5v-turbo' }
+  ];
+
+  var $ = function (s) { return document.querySelector(s); };
+  var LOG = [];
+  var RAW_OUT = '';
+  var MISMATCHES = [];
+  var SCORES = [];
+
+  window.__probe = { stage: 'boot', logs: LOG, models: null, results: SCORES, err: null };
+
+  function log(m) {
+    LOG.push(String(m));
+    $('#log').textContent = LOG.join('\n');
+    $('#log').scrollTop = $('#log').scrollHeight;
+  }
+  function live(s) { $('#live').textContent = s; }
+
+  function toDataURL(url) {
+    return fetch(url).then(function (r) {
+      if (!r.ok) throw new Error('取图失败 ' + r.status + ' ' + url);
+      return r.blob();
+    }).then(function (b) {
+      return new Promise(function (res, rej) {
+        var fr = new FileReader();
+        fr.onload = function () { res(fr.result); };
+        fr.onerror = function () { rej(new Error('读图失败')); };
+        fr.readAsDataURL(b);
+      });
+    });
+  }
+
+  var cloud = null, VIS = [];
+  function init() {
+    if (cloud) return cloud;
+    cloud = window.WorkBuddyCloud.createWorkBuddyCloud({
+      endpoint: PUB.endpoint,
+      publishableKey: PUB.publishableKey
+    });
+    return cloud;
+  }
+
+  function pickable(m) {
+    var vision = m.supportsImages === true ||
+                 (m.capabilities && m.capabilities.vision === true) ||
+                 (m.modalities && m.modalities.input && m.modalities.input.indexOf('image') >= 0);
+    return m.enabled !== false && m.disabled !== true && m.disabledMultimodal !== true && vision;
+  }
+
+  function listModels() {
+    return init().llm.models.list().then(function (models) {
+      window.__probe.models = models.map(function (m) {
+        return {
+          id: m.id, name: m.name, enabled: m.enabled, disabled: m.disabled,
+          supportsImages: m.supportsImages, disabledMultimodal: m.disabledMultimodal,
+          maxAllowedSize: m.maxAllowedSize,
+          capabilities: m.capabilities, modalities: m.modalities
+        };
+      });
+      log('=== 模型列表：共 ' + models.length + ' 个 ===');
+      models.forEach(function (m) {
+        log('  ' + m.id + '  | ' + (m.name || '') + '  | enabled=' + m.enabled +
+            ' disabled=' + m.disabled + ' 图片=' + m.supportsImages +
+            ' 关多模态=' + m.disabledMultimodal + ' cap=' + JSON.stringify(m.capabilities || null));
+      });
+      VIS = models.filter(pickable);
+      $('#mstat').textContent = '共 ' + models.length + ' 个，可用能传图的 ' + VIS.length + ' 个';
+      if (VIS.length) log('→ 可用能传图的模型：' + VIS.map(function (m) { return m.id; }).join(', '));
+      else log('→ ⚠ 没有可用的能传图模型');
+      return models;
+    });
+  }
+
+  /* ---- 解析与比对 ---- */
+  function norm(s) {
+    return String(s == null ? '' : s)
+      .replace(/\s+/g, '')
+      .replace(/[「」『』【】（）()\[\]※★☆]/g, '')
+      .replace(/[０-９]/g, function (c) { return String.fromCharCode(c.charCodeAt(0) - 0xFEE0); });
+  }
+
+  function parseLines(out) {
+    return out.split(/\r?\n/).map(function (s) {
+      return s.replace(/^\s*(?:第)?\s*\d+\s*(?:行|格)?\s*[.、:：)]?\s*/, '').trim();
+    }).filter(function (s) { return s !== ''; });
+  }
+
+  function ensureModels() {
+    if (VIS.length) return Promise.resolve(VIS);
+    return listModels().then(function () { return VIS; });
+  }
+
+  function runOne(t) {
+    return ensureModels().then(function () {
+      if (!VIS.length) throw new Error('没有可用的能传图模型');
+      var m = VIS[0];
+      if (t.model) {
+        var hit = null;
+        for (var q = 0; q < VIS.length; q++) if (VIS[q].id === t.model) hit = VIS[q];
+        m = hit || { id: t.model };
+        if (!hit) log('  · 注意：' + t.model + ' 不在「能传图」名单里，照样试一下');
+      }
+      log('--- 测试：' + t.name + '  模型=' + m.id + ' ---');
+      return fetch('assets/_truth_col1.json').then(function (r) { return r.json(); }).then(function (truth) {
+        var want = truth[t.key];
+        var N = want.length;
+        var prompt = '这是价目表的某一列，从上到下**共 ' + N + ' 行**（每行一格）。'
+          + '\n每格里左边是商品名称、右边是批发价。请从上到下逐行读出每格的商品名称，要求：'
+          + '\n1. 一行输出一个商品名，不要编号、不要价格、不要标点、不要任何解释'
+          + '\n2. **商品名开头的数字/字母必须原样保留**：图上写「6克双喜」就不能写成「克双喜」，'
+          + '写「01软广喜」就不能少掉「01」'
+          + '\n3. 图上写什么就读什么，包括错别字（如「南京弦赫门」「薄荷十二叉」），不要改写成正确品牌名'
+          + '\n4. 如果某一行不是商品（表头、日期、留白），就输出一个半角短横线 -'
+          + '\n5. 必须输出**正好 ' + N + ' 行**，一行不能多也一行不能少';
+        var content = [
+          { type: 'text', text: prompt },
+          { type: 'image_url', image_url: { url: null, detail: 'high' } }
+        ];
+        return toDataURL(t.img).then(function (d) {
+          log('  图片 ' + t.img + '，base64 ' + Math.round(d.length / 1024) + ' KB');
+          content[1].image_url.url = d;
+          RAW_OUT = '';
+          var t0 = Date.now();
+          return (function () {
+            var it = init().llm.chat.completions.create({
+              model: m.id,
+              messages: [
+                { role: 'system', content: SYS },
+                { role: 'user', content: content }
+              ],
+              stream: true,
+              temperature: 0
+            });
+            return (async function () {
+              var n = 0;
+              for await (var chunk of it) {
+                var d2 = chunk.choices && chunk.choices[0] && chunk.choices[0].delta;
+                if (d2 && d2.content) { RAW_OUT += d2.content; n++; if (n % 3 === 0) live(RAW_OUT); }
+              }
+              return Date.now() - t0;
+            })();
+          })();
+        }).then(function (ms) {
+          live(RAW_OUT);
+          log('  用时 ' + (ms / 1000).toFixed(1) + ' 秒，输出 ' + RAW_OUT.length + ' 字');
+          if (!RAW_OUT.trim()) { log('  ⚠ 模型没吐任何内容'); log('  原始返回：' + JSON.stringify(window.__probe.lastChunkDebug || null)); }
+          var got = parseLines(RAW_OUT);
+          var bad = [];
+          for (var i = 0; i < Math.max(got.length, N); i++) {
+            var a = want[i] == null ? '-' : want[i];
+            var b = got[i] == null ? '(缺)' : got[i];
+            if (norm(a) !== norm(b)) bad.push({ r: t.from + i, want: a, got: b });
+          }
+          var hit = N - bad.filter(function (x) { return x.got !== '(缺)' && !/^-*$/.test(x.got); }).length;
+          var exact = 0;
+          for (var j = 0; j < N; j++) {
+            var aa = want[j] == null ? '-' : want[j];
+            var bb = got[j] == null ? '(缺)' : got[j];
+            if (norm(aa) === norm(bb)) exact++;
+          }
+          var rec = {
+            test: t.name, model: m.id, lines: got.length, want: N,
+            exact: exact, acc: +(exact / N * 100).toFixed(1), bad: bad, raw: RAW_OUT
+          };
+          SCORES.push(rec);
+          window.__probe.results = SCORES;
+          log('  → 输出 ' + got.length + ' 行 / 应为 ' + N + ' 行；逐行完全一致 ' + exact + '/' + N +
+              ' = ' + rec.acc + '%');
+          showDiff(t, want, got, rec);
+          return rec;
+        });
+      });
+    });
+  }
+
+  function showDiff(t, want, got, rec) {
+    $('#rescard').style.display = '';
+    $('#restitle').textContent = t.name + ' —— ' + rec.exact + '/' + rec.want + ' 行完全一致（' + rec.acc + '%）';
+    var html = '<table><tr><th style="width:52px">行</th><th>标准答案</th><th>模型读的</th><th style="width:44px">一致</th></tr>';
+    for (var i = 0; i < Math.max(want.length, got.length); i++) {
+      var a = want[i] == null ? '-' : want[i];
+      var b = got[i] == null ? '(缺)' : got[i];
+      var ok = norm(a) === norm(b);
+      html += '<tr class="' + (ok ? '' : 'bad') + '"><td>' + (t.from + i) + '</td><td>' +
+              esc(a) + '</td><td>' + esc(b) + '</td><td>' + (ok ? '✓' : '✗') + '</td></tr>';
+    }
+    html += '</table>';
+    $('#diff').innerHTML = html;
+  }
+  function esc(s) {
+    return String(s).replace(/[&<>"]/g, function (c) {
+      return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c];
+    });
+  }
+
+  function runAll() {
+    var i = 0;
+    function step() {
+      if (i >= TESTS.length) {
+        log('=== 汇总 ===');
+        SCORES.forEach(function (r) { log('  ' + r.test + ' : ' + r.exact + '/' + r.want + ' = ' + r.acc + '%'); });
+        window.__probe.stage = 'done';
+        return;
+      }
+      var t = TESTS[i++];
+      return runOne(t).catch(function (e) {
+        log('  ✗ ' + t.name + ' 出错：' + (e && e.code ? e.code + ' ' : '') + (e && e.message ? e.message : e));
+        window.__probe.err = { code: e && e.code, message: e && e.message, requestId: e && e.requestId };
+        SCORES.push({ test: t.name, err: String(e && e.message) });
+      }).then(step);
+    }
+    return step();
+  }
+
+  function boot() {
+    var sel = $('#imgsel');
+    TESTS.forEach(function (t, i) {
+      var o = document.createElement('option');
+      o.value = String(i); o.textContent = t.name;
+      sel.appendChild(o);
+    });
+    $('#bmodels').onclick = function () {
+      window.__probe.stage = 'models';
+      listModels().catch(function (e) {
+        log('✗ 读模型列表失败：' + (e && e.code ? e.code + ' ' : '') + (e && e.message ? e.message : e));
+        window.__probe.err = { code: e && e.code, message: e && e.message, requestId: e && e.requestId };
+        window.__probe.stage = 'models-err';
+      });
+    };
+    $('#brun').onclick = function () {
+      var t = TESTS[+$('#imgsel').value];
+      window.__probe.stage = 'running';
+      runOne(t).catch(function (e) {
+        log('✗ 出错：' + (e && e.code ? e.code + ' ' : '') + (e && e.message ? e.message : e));
+        window.__probe.err = { code: e && e.code, message: e && e.message, requestId: e && e.requestId };
+        window.__probe.stage = 'err';
+      }).then(function () { if (window.__probe.stage === 'running') window.__probe.stage = 'done'; });
+    };
+    $('#brunall').onclick = function () { runAll(); };
+
+    if (!window.WorkBuddyCloud) {
+      log('✗ SDK 没加载上（CDN 和本地兜底都失败）');
+      window.__probe.stage = 'nosdk';
+      return;
+    }
+    log('SDK 已加载：' + (window.WorkBuddyCloud.createWorkBuddyCloud ? 'OK' : '缺 createWorkBuddyCloud'));
+    log('origin = ' + location.origin);
+    var hash = location.hash.replace('#', '');
+    if (hash === 'auto') {
+      window.__probe.stage = 'init';
+      log('自动模式：先读模型列表，再把 4 张测试图都跑一遍');
+      listModels().catch(function (e) {
+        log('✗ 读模型列表失败：' + (e && e.code ? e.code + ' ' : '') + (e && e.message ? e.message : e));
+        window.__probe.err = { code: e && e.code, message: e && e.message, requestId: e && e.requestId };
+      }).then(runAll);
+    } else {
+      window.__probe.stage = 'idle';
+    }
+  }
+
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot);
+  else boot();
+})();
+</script>
+</body>
+</html>

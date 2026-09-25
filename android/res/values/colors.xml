@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- 图标底色：和网页里那个主色红 (#b3261e) 同色 -->
+    <color name="ic_launcher_background">#b3261e</color>
+
+    <!-- 窗口底色：和网页浅色背景 (#f2f3f5) 对齐，避免启动瞬间闪白 -->
+    <color name="win_bg">#f2f3f5</color>
+    <color name="win_bg_dark">#121316</color>
+</resources>

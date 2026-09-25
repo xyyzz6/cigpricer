@@ -1,0 +1,8 @@
+{
+    "defaults":
+    {
+        "run-as": "root"
+    },
+    "username": "cigpricersync",
+    "groupname": "cigpricersync"
+}

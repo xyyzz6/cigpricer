@@ -1,0 +1,17 @@
+services:
+  cigpricer:
+    build:
+      context: ..           # 仓库根目录（compose 在 server/ 下，故用 .. 才能取到 build/index.html 与 server/server.js）
+      dockerfile: Dockerfile
+    image: cigpricer-sync:latest
+    container_name: cigpricer
+    ports:
+      - "8080:8080"        # 改成你想要的宿主机端口，比如 12345:8080
+    volumes:
+      - ./data:/data       # 表数据持久化；备份这个目录即可迁移
+    environment:
+      - PORT=8080
+      - DATA_DIR=/data
+      # ★ 必填：设一个够长的随机密钥，App 和网页都要填同一个才能同步
+      - SYNC_KEY=W23IFCz-u-lY2vpZr5QzQ7VTC1VoQLEwHDdE10zv4
+    restart: unless-stopped

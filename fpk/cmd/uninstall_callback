@@ -1,0 +1,7 @@
+#!/bin/bash
+### 卸载后执行：清掉容器（保留镜像与数据）。
+### 数据目录在 data-share，卸载后保留，重装能直接接着用。
+source "$(dirname "$0")/common"
+# 容器名固定，不清掉重装会撞名
+docker rm -f "${CONTAINER_NAME}" >/dev/null 2>&1
+exit 0

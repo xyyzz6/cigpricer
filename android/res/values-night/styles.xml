@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- 深色主题：系统夜间模式开启时生效，网页的 prefers-color-scheme 也会变 dark -->
+    <style name="AppTheme" parent="@android:style/Theme.Material.NoActionBar">
+        <item name="android:isLightTheme">false</item>
+        <item name="android:windowBackground">@color/win_bg_dark</item>
+        <item name="android:colorBackground">@color/win_bg_dark</item>
+        <item name="android:statusBarColor">@color/win_bg_dark</item>
+        <item name="android:navigationBarColor">@color/win_bg_dark</item>
+        <item name="android:windowLightStatusBar">false</item>
+    </style>
+</resources>

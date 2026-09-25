@@ -1,0 +1,5 @@
+#!/bin/bash
+### 安装前执行：标准版不内嵌镜像归档，此处无需动作。
+source "$(dirname "$0")/common"
+: > "${WARN_FILE}" 2>/dev/null
+exit 0

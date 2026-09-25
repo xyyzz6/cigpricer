@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    package="com.boki.cigpricer">
+
+    <!--
+      minSdkVersion 必须和 android/build.js 里的 APP.minApi 一致。
+      这里那份会赢过 aapt2 的 min-sdk-version 参数，只改一处会让 dumpsys 看到另一个值。
+      （XML 注释里不能出现连续两个减号，会让整个 manifest 解析失败且不报错。）
+    -->
+    <uses-sdk android:minSdkVersion="24" android:targetSdkVersion="34" />
+
+    <!--
+      唯一的权限是联网，只为一个用途：「认字」页签调 AI 读商品名（用户自己填的 API）。
+      其余全部照旧离线 —— 页面、切图、整表都在 assets 里，导入的表存在 WebView 的
+      IndexedDB 里。**搜索、看图、换照片、导入表包这些都不需要网络**，断网也能用。
+      ⚠️ 别再往这里加别的权限（尤其别加读存储/通讯录）；要加先问一句是不是非加不可。
+    -->
+    <uses-permission android:name="android.permission.INTERNET" />
+
+    <application
+        android:allowBackup="true"
+        android:hardwareAccelerated="true"
+        android:usesCleartextTraffic="true"
+        android:icon="@mipmap/ic_launcher"
+        android:label="@string/app_name"
+        android:roundIcon="@mipmap/ic_launcher_round"
+        android:supportsRtl="true"
+        android:theme="@style/AppTheme">
+
+        <activity
+            android:name=".MainActivity"
+            android:configChanges="orientation|screenSize|screenLayout|smallestScreenSize|keyboardHidden|uiMode|density|fontScale"
+            android:exported="true"
+            android:launchMode="singleTask"
+            android:windowSoftInputMode="adjustResize">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>
+    </application>
+</manifest>

@@ -1,0 +1,22 @@
+#!/bin/bash
+### 安装向导完成后执行：
+###   1. 渲染 compose（首次安装：向导值优先，缺项用默认值 / 自动生成密钥）
+###   2. 准备数据目录
+###   3. 把自动生成的密钥明文写一份到数据目录，方便用户在 App 里填
+###   4. docker load 导入 fpk 内置离线镜像（不联网）+ 拉起容器
+source "$(dirname "$0")/common"
+: > "${WARN_FILE}" 2>/dev/null
+
+render_compose
+ensure_dir "${DATA_DIR}"
+chmod -R 777 "${DATA_DIR}" 2>/dev/null
+
+# 把自动生成的密钥也写一份明文到数据目录，方便用户在 App 里填
+if [ -n "${SYNC_KEY}" ]; then
+    echo "${SYNC_KEY}" > "${DATA_DIR}/SYNC_KEY.txt" 2>/dev/null
+fi
+
+load_image 0
+recreate_container
+
+exit 0

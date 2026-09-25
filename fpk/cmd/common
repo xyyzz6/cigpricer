@@ -1,0 +1,156 @@
+#!/bin/bash
+### 烟价速查同步服务 —— 公用函数与变量
+### 被 install_init / install_callback / config_callback / upgrade_callback /
+### uninstall_* / main 统一 source，避免逻辑漂移。
+
+# 镜像名（由 fpk-tools/build.sh 注入，必须与生成的 compose 里的 image 一致）
+IMAGE="cigpricer-sync:latest"
+CONTAINER_NAME="cigpricer-sync"
+
+APP_DIR="/var/apps/${TRIM_APPNAME}"
+# 应用数据（store.json），位于 data-share，卸载后保留
+DATA_DIR="${APP_DIR}/shares/cigpricersync/data"
+# 🔴 fnOS 跑 cmd 脚本时 $HOME 可能指向 /home/<appname> 且不可写（实弹窗：
+#    mkdir /home/cigpricersync: permission denied）。docker CLI 启动时要写
+#    $HOME/.docker，一炸就是"每个镜像源都失败"，跟网络根本没关系。
+#    强制把 HOME / DOCKER_CONFIG 指到数据目录下（可写），docker 命令才活得下去。
+export HOME="${DATA_DIR}"
+export DOCKER_CONFIG="${DATA_DIR}/.docker"
+# ⚠️ 生成出来的 compose 刻意【不叫】docker/docker-compose.yaml、也不放在 docker/ 下：
+#    飞牛 appcenter 按约定路径探测 docker 项目（app/docker/docker-compose.yaml →
+#    ${TRIM_APPDEST}/docker/docker-compose.yaml）。只要那个文件存在，安装时它就可能
+#    替我们执行 docker compose pull，而镜像 tag 是本地导入的、远端根本不存在，
+#    报错就是 Get "https://registry-1.docker.io/v2/": context deadline exceeded。
+#    换到 app 根目录并改个名字，从根上避开探测。
+COMPOSE_FILE="${TRIM_APPDEST}/cigpricer-sync-compose.yaml"
+CONF_FILE="${TRIM_PKGETC}/cigpricersync.conf"
+WARN_FILE="${TRIM_PKGETC}/cigpricersync.warn"
+
+DEFAULT_PORT="8080"
+
+# 离线镜像包：随 fpk 一起安装，docker load 导入，全程不需要联网拉镜像
+IMAGE_TAR="${TRIM_APPDEST}/image/cigpricer-sync-image.tar.gz"
+
+fail() { echo "$1" > "${TRIM_TEMP_LOGFILE}"; exit 1; }
+warn() { echo "[WARN] $1"; echo "$1" >> "${WARN_FILE}" 2>/dev/null; }
+
+# 读向导字段：两种命名约定都试（wizard_xxx 与 wizard_wizard_xxx），避免被静默忽略。
+wiz() {
+    local n1="wizard_$1" n2="wizard_wizard_$1" v1="" v2=""
+    eval "v1=\${${n1}:-}"
+    eval "v2=\${${n2}:-}"
+    if [ -n "${v1}" ]; then printf '%s' "${v1}"; else printf '%s' "${v2}"; fi
+}
+
+ensure_dir() {
+    local dir="$1"
+    [ -z "$dir" ] && return 0
+    if [ ! -d "$dir" ]; then
+        mkdir -p "$dir" 2>/dev/null || fail "无法创建目录：${dir}。请先在文件管理里手工建好，再重试安装。"
+    fi
+    return 0
+}
+
+load_conf() { [ -f "${CONF_FILE}" ] && . "${CONF_FILE}"; return 0; }
+
+save_conf() {
+    mkdir -p "$(dirname "${CONF_FILE}")" 2>/dev/null
+    {
+        echo "PORT=\"${PORT}\""
+        echo "SYNC_KEY=\"${SYNC_KEY}\""
+    } > "${CONF_FILE}" 2>/dev/null
+    return 0
+}
+
+# 生成一个随机同步密钥（向导留空时自动生成）
+gen_key() {
+    if command -v openssl >/dev/null 2>&1; then
+        openssl rand -base64 32 | tr -d '/+=' | head -c 36
+    else
+        head -c 27 /dev/urandom | base64 | tr -d '/+=' | head -c 36
+    fi
+}
+
+# 桌面入口端口同步（坑 9：ui/config 的 port 写死，改端口后桌面图标仍跳旧端口）
+patch_ui_port() {
+    local f="${TRIM_APPDEST}/ui/config"
+    [ -f "$f" ] || return 0
+    sed -i "s/\"port\": \"[0-9]*\"/\"port\": \"${PORT}\"/" "$f" 2>/dev/null
+    return 0
+}
+
+render_compose() {
+    local w
+    w="$(wiz port)"; PORT="${w:-${PORT:-${DEFAULT_PORT}}}"
+    [ -z "${PORT}" ] && PORT="${DEFAULT_PORT}"
+
+    w="$(wiz sync_key)"; SYNC_KEY="${w:-${SYNC_KEY:-}}"
+    if [ -z "${SYNC_KEY}" ]; then
+        SYNC_KEY="$(gen_key)"
+        echo "[cigpricer-sync] 未填写同步密钥，已自动生成并保存到数据目录 SYNC_KEY.txt"
+    fi
+
+    mkdir -p "$(dirname "${COMPOSE_FILE}")" || fail "无法写入 ${COMPOSE_FILE}"
+
+    {
+        echo "# 由 cigpricer-sync 安装/配置向导自动生成，手工修改会在下次配置变更时被覆盖。"
+        echo "# 路径与文件名刻意避开 appcenter 的 docker 项目探测（不用 docker/docker-compose.yaml）。"
+        echo "# 镜像由 fpk 内置的离线包 docker load 导入（无 build 段，不需要联网）。"
+        echo "services:"
+        echo "  cigpricer-sync:"
+        echo "    image: ${IMAGE}"
+        echo "    container_name: ${CONTAINER_NAME}"
+        echo "    restart: unless-stopped"
+        echo "    environment:"
+        echo "      - TZ=Asia/Shanghai"
+        echo "      - PORT=8080"
+        echo "      - DATA_DIR=/data"
+        echo "      - SYNC_KEY=\"${SYNC_KEY}\""
+        echo "    ports:"
+        echo "      - '${PORT}:8080'"
+        echo "    volumes:"
+        echo "      - \"${DATA_DIR}:/data\""
+    } > "${COMPOSE_FILE}" || fail "写入 ${COMPOSE_FILE} 失败。"
+
+    patch_ui_port
+    save_conf
+    return 0
+}
+
+load_image() {
+    local force="${1:-0}"
+    if [ "${force}" != "1" ] && docker image inspect "${IMAGE}" >/dev/null 2>&1; then
+        echo "[cigpricer-sync] 镜像已存在，跳过导入。"
+        return 0
+    fi
+    if [ ! -f "${IMAGE_TAR}" ]; then
+        fail "离线镜像包缺失：${IMAGE_TAR}。安装包可能不完整，请重新下载 fpk 再装。"
+    fi
+    echo "[cigpricer-sync] 导入离线镜像（约 51MB，需几十秒）..."
+    local out rc
+    out="$(docker load -i "${IMAGE_TAR}" 2>&1)"; rc=$?
+    echo "${out}" | tail -5
+    if [ ${rc} -ne 0 ] || ! docker image inspect "${IMAGE}" >/dev/null 2>&1; then
+        fail "离线镜像导入失败（不涉及网络）。最后错误：$(echo "${out}" | tail -3 | tr '\n' ' ')"
+    fi
+    echo "[cigpricer-sync] 镜像导入完成。"
+    return 0
+}
+
+_do_up() {
+    if docker compose version >/dev/null 2>&1; then
+        docker compose -f "${COMPOSE_FILE}" up -d --force-recreate 2>&1
+    elif command -v docker-compose >/dev/null 2>&1; then
+        docker-compose -f "${COMPOSE_FILE}" up -d --force-recreate 2>&1
+    else
+        echo "docker compose 不可用"
+        return 1
+    fi
+}
+
+recreate_container() {
+    local out rc
+    out="$(_do_up)"; rc=$?
+    echo "${out}" | tail -8
+    return 0
+}

@@ -1,0 +1,22 @@
+# 构建上下文是仓库根（server/docker-compose.yml 里 context: ..）
+# 只保留镜像真正需要的两个文件：server/server.js 和 build/index.html
+node_modules
+.git
+.venv
+android
+shots
+shots-apk
+_diag
+inbox
+tables
+recognizer
+recognizer_dev
+data
+build/*
+!build/index.html
+*.apk
+*.keystore
+.DS_Store
+server/Dockerfile
+server/docker-compose.yml
+server/.dockerignore
