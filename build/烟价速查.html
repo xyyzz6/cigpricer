@@ -105,6 +105,27 @@ header .brand,header .searchbox{max-width:880px;margin:0 auto}
   color:var(--fg);padding:8px 14px;border-radius:999px;cursor:pointer;
 }
 .chips b:active{background:var(--primary);color:#fff}
+.chips b.hotcfg{color:var(--dim);background:transparent;border:1px dashed var(--line)}
+.chips.edit b{position:relative;padding-right:30px}
+.chips.edit b .x{
+  position:absolute;top:50%;right:6px;transform:translateY(-50%);
+  width:18px;height:18px;border-radius:50%;background:var(--dim);color:#fff;
+  font-style:normal;font-size:13px;line-height:18px;text-align:center;
+}
+.chips.edit b .x:active{background:#ff3b30}
+.hoteditor{display:flex;gap:8px;flex-wrap:wrap;padding:4px 0 10px}
+.hoteditor input{
+  flex:1;min-width:140px;font-family:inherit;font-size:16px;color:var(--fg);
+  background:var(--bg);border:1px solid var(--line);border-radius:10px;
+  padding:9px 12px;outline:0;min-width:0;
+}
+.hoteditor input:focus{border-color:var(--primary);box-shadow:0 0 0 3px var(--primary-dim)}
+.hoteditor button{
+  font-family:inherit;font-size:14px;color:var(--primary);background:var(--primary-dim);
+  border:0;border-radius:10px;padding:9px 14px;
+}
+.hoteditor button:active{opacity:.65}
+.dimtag{font-size:13px;color:var(--dim)}
 
 /* ---------- 表筛选（iOS 胶囊） ---------- */
 .tf{display:flex;flex-wrap:wrap;align-items:center;gap:8px;padding:2px 0 14px}
@@ -1531,11 +1552,46 @@ document.addEventListener('keydown', e => {
 /* ================== 结果渲染 ================== */
 const MAXCARD = 60;
 
+/* ---- 快捷搜索：出厂默认来自构建期 RAW.hot，店主可自定义（存 localStorage） ---- */
+const LS_HOT = 'cigpricer.hot';
+let hotEdit = false;
+function getHot(){
+  try {
+    const v = JSON.parse(localStorage.getItem(LS_HOT) || 'null');
+    if (Array.isArray(v)) return v.map(x => String(x).trim()).filter(Boolean);
+  } catch (e) {}
+  return null;                       // null = 没自定义过，用默认
+}
+function saveHot(list){
+  try { localStorage.setItem(LS_HOT, JSON.stringify(list)); } catch (e) {}
+}
+function renderHot(){
+  const hot = $('#hot');
+  const custom = getHot();
+  const list = custom || RAW.hot;
+  if (hotEdit){
+    hot.innerHTML = '<div class="hint">点 × 删除，或在下面输入添加新的快捷词；改完点「完成」。</div>' +
+      '<div class="chips edit">' +
+      (list.length ? list.map((b, i) =>
+        '<b data-i="' + i + '">' + esc(b) + '<i class="x" data-del="' + i + '" title="删除"></i></b>').join('')
+        : '<span class="dimtag">快捷词已清空</span>') + '</div>' +
+      '<div class="hoteditor">' +
+      '<input id="hotnew" type="text" maxlength="12" placeholder="输入品牌名，如 中华" autocomplete="off">' +
+      '<button id="hotadd">添加</button>' +
+      (custom ? '<button id="hotreset">恢复默认</button>' : '') +
+      '<button id="hotdone">完成</button></div>';
+  } else {
+    hot.innerHTML = '<div class="hint">输入商品名即可查价；也可以直接点下面的品牌快速查看。<br>结果里的截图就是价目表原样切片，点一下可放大看原图。</div>' +
+      '<div class="chips">' +
+      list.map(b => '<b data-b="' + esc(b) + '">' + esc(b) + '</b>').join('') +
+      '<b class="hotcfg" data-edit="1" title="自定义快捷搜索">编辑</b></div>';
+  }
+}
+
 function renderResults(q){
   const box = $('#res'), cnt = $('#cnt'), hot = $('#hot');
   if (!norm(q).length){
-    hot.innerHTML = '<div class="hint">输入商品名即可查价；也可以直接点下面的品牌快速查看。<br>结果里的截图就是价目表原样切片，点一下可放大看原图。</div><div class="chips">' +
-      RAW.hot.map(b => '<b data-b="' + esc(b) + '">' + esc(b) + '</b>').join('') + '</div>';
+    renderHot();
     box.innerHTML = ''; cnt.textContent = '';
     return [];
   }
@@ -1631,12 +1687,59 @@ $('#res').addEventListener('click', e => {
   if (c) showViewer(lastList, +c.dataset.i, $('#q').value);
 });
 $('#hot').addEventListener('click', e => {
-  const b = e.target.closest('b');
-  if (!b) return;
+  /* 编辑模式里的 × 删除 */
+  const x = e.target.closest('.x');
+  if (x){
+    const i = +x.dataset.del, list = getHot() || [...RAW.hot];
+    list.splice(i, 1);
+    saveHot(list);
+    renderHot();
+    return;
+  }
+  /* 「编辑」进入编辑模式 */
+  if (e.target.closest('[data-edit]')){
+    hotEdit = true;
+    renderHot();
+    const ni = $('#hotnew'); if (ni) ni.focus();
+    return;
+  }
+  /* 编辑器按钮：添加 / 恢复默认 / 完成 */
+  const btn = e.target.closest('button');
+  if (btn){
+    if (btn.id === 'hotadd'){
+      const inp = $('#hotnew'), v = (inp && inp.value || '').trim();
+      if (!v) return;
+      const list = getHot() || [...RAW.hot];
+      if (!list.some(w => w === v)){ list.push(v); saveHot(list); }
+      renderHot();
+      const ni = $('#hotnew'); if (ni){ ni.focus(); }
+      return;
+    }
+    if (btn.id === 'hotreset'){
+      try { localStorage.removeItem(LS_HOT); } catch (err) {}
+      renderHot();
+      return;
+    }
+    if (btn.id === 'hotdone'){
+      hotEdit = false;
+      renderHot();
+      return;
+    }
+    return;
+  }
+  /* 普通模式：点品牌 → 直接搜 */
+  const b = e.target.closest('.chips b');
+  if (!b || !b.dataset.b) return;
   const v = b.dataset.b;
   $('#q').value = v; $('#clr').classList.add('on');
   lastList = renderResults(v);
   window.scrollTo({top: 0});
+});
+/* 编辑模式里回车 = 添加 */
+$('#hot').addEventListener('keydown', e => {
+  if (e.key !== 'Enter' || e.target.id !== 'hotnew') return;
+  e.preventDefault();
+  const add = $('#hotadd'); if (add) add.click();
 });
 
 /* ================== 表筛选 ================== */
