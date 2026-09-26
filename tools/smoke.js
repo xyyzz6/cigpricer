@@ -1020,6 +1020,93 @@ const getJSON = url => new Promise((res, rej) => {
     await ev(`!document.querySelector('#res').classList.contains('g2')`) &&
     (await ev(`document.querySelector('#cnt .segsm button.on').dataset.g`)) === '1');
 
+  /* 启动时的新版本提醒弹窗（2026-09-26 加）
+     守五件事：① 默认不显示；② **只有静默检查**发现新版本才弹、手动「检查更新」不弹；
+              ③ 「稍后」关掉后本次启动不再弹；④ 「不再提醒此版本」存本机且下次启动不弹；
+              ⑤ 返回键能关掉它。
+     ⚠️ 网页版 appVersion() 名字是空的 ⇒ 真链路永远判不出「有新版」，
+        所以这里把 fetch 和 appVersion 都换成假的，让 checkUpdate 真跑一遍 ——
+        别只调 updPopOpen() 走过场，那样「手动检查不弹」这条就永远测不到。 */
+  check('更新提醒弹窗存在且默认不显示',
+    await ev(`!!document.querySelector('#updpop') && !document.querySelector('#updpop').classList.contains('on')`));
+
+  await ev(`(function(){
+    window.__oFetch = window.fetch;
+    window.__oVer = window.appVersion;
+    window.appVersion = function(){ return { name: '1.0.40', code: 41 }; };
+    // 只假造 GitHub 那一个地址，别的请求照旧走真的（免得把同步之类的打挂）
+    window.fetch = function(u, o){
+      if (String(u).indexOf('api.github.com') >= 0) return Promise.resolve({ ok: true, json: function(){ return Promise.resolve({
+        tag_name: 'v9.9.9',
+        body: '- 测试说明第一行\\n- 测试说明第二行',
+        assets: [{ name: 'cigpricer.apk', size: 123, browser_download_url: 'https://example.invalid/a.apk' }]
+      }); } });
+      return window.__oFetch(u, o);
+    };
+  })()`);
+
+  await ev(`checkUpdate(false)`); await sleep(400);
+  check('手动「检查更新」不弹窗（那时店主正看着卡片）',
+    await ev(`!document.querySelector('#updpop').classList.contains('on')`));
+  check('手动检查确实认出了新版本（证明上一条不是假通过）',
+    (await ev(`UPD.latest`)) === '9.9.9', await ev(`UPD.latest`));
+
+  await ev(`checkUpdate(true)`); await sleep(400);
+  check('静默检查发现新版本 → 弹窗弹出来',
+    await ev(`document.querySelector('#updpop').classList.contains('on')`));
+  check('弹窗里带版本号', (await ev(`document.querySelector('#updPopVer').textContent`)) === 'v9.9.9');
+  check('弹窗里带更新说明',
+    String(await ev(`document.querySelector('#updPopBody').textContent`)).indexOf('测试说明第一行') >= 0);
+  await shot('19-启动更新提醒.png');
+
+  // ③「稍后」：关掉，本次启动不再弹
+  await ev(`document.querySelector('#updPopLater').click()`); await sleep(200);
+  check('点「稍后」把弹窗关掉', await ev(`!document.querySelector('#updpop').classList.contains('on')`));
+  await ev(`checkUpdate(true)`); await sleep(400);
+  check('「稍后」之后本次启动不再弹（同一次加载内）',
+    await ev(`!document.querySelector('#updpop').classList.contains('on')`));
+
+  // ⑤ 返回键 = 稍后
+  await ev(`updPopShown = false; updPopOpen()`); await sleep(200);
+  check('（重置后）弹窗能再次弹出，说明上面那条不是假通过',
+    await ev(`document.querySelector('#updpop').classList.contains('on')`));
+  check('返回键关掉弹窗并消费这次返回',
+    (await ev(`window.__backHook()`)) === true &&
+    !(await ev(`document.querySelector('#updpop').classList.contains('on')`)));
+
+  // ④「不再提醒此版本」：写本机，之后不再弹
+  await ev(`updPopShown = false; updPopOpen()`); await sleep(200);
+  await ev(`document.querySelector('#updPopNever').click()`); await sleep(200);
+  check('点「不再提醒此版本」写进了 localStorage',
+    (await ev(`localStorage.getItem('cigpricer.updSkip')`)) === '9.9.9',
+    await ev(`localStorage.getItem('cigpricer.updSkip')`));
+  await ev(`updPopShown = false; updPopOpen()`); await sleep(200);
+  check('已「不再提醒」的版本不再弹',
+    await ev(`!document.querySelector('#updpop').classList.contains('on')`));
+  check('「不再提醒」只是不弹窗，卡片里照样能看到新版本',
+    (await ev(`!document.querySelector('#updNew').hidden`)) &&
+    (await ev(`document.querySelector('#updNewVer').textContent`)) === 'v9.9.9');
+
+  // 存的是本机偏好 ⇒ 换一次「启动」（重新加载）仍然不弹。
+  // ⚠️ 假 fetch 必须在**页面脚本之前**注入（addScriptToEvaluateOnNewDocument）：
+  //    启动后 2.5 秒那次自动检查会自己发起请求，抢跑就会真打到 GitHub ——
+  //    这条断言曾经因此假红（真拿到刚发布的 v1.0.41，就弹了）。
+  await ev(`if (window.__oFetch) window.fetch = window.__oFetch; if (window.__oVer) window.appVersion = window.__oVer;`);
+  await cdp.send('Page.addScriptToEvaluateOnNewDocument', { source:
+    `(function(){ var of = window.fetch;
+       window.fetch = function(u, o){
+         if (String(u).indexOf('api.github.com') >= 0) return Promise.resolve({ ok: true, json: function(){ return Promise.resolve({ tag_name: 'v9.9.9', body: 'x', assets: [] }); } });
+         return of(u, o);
+       }; })();` });
+  await cdp.send('Page.navigate', { url }); await sleep(1200);
+  if (!(await waitReady())) throw new Error('刷新后页面没就绪');
+  await ev(`window.appVersion = function(){ return { name: '1.0.40', code: 41 }; };`);
+  check('（脚手架自检）假 fetch 确实装上了', await ev(`String(fetch).indexOf('api.github.com') >= 0`));
+  await sleep(3200);                        // 跨过启动后 2.5 秒那次自动检查
+  check('重开一次（启动）仍然不弹这个版本（存的是本机偏好）',
+    await ev(`!document.querySelector('#updpop').classList.contains('on')`),
+    await ev(`JSON.stringify({skip:localStorage.getItem('cigpricer.updSkip'),latest:UPD.latest,shown:updPopShown})`));
+
   check('无 JS 异常 / console.error', errors.length === 0, errors.slice(0, 5).join(' | '));
 
   // 报告

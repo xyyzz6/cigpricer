@@ -403,6 +403,43 @@ code{background:var(--chip);padding:1px 5px;border-radius:5px;font-size:12px;wor
   max-height:160px;overflow:auto;font-family:inherit;line-height:1.55}
 #updNote{font-size:13px;line-height:1.6;margin-top:8px;color:var(--dim)}
 #updNote:empty{display:none}
+
+/* ---------- 启动时的新版本提醒弹窗 ----------
+   跟 #askname / #busy 同一套居中对话框（fixed inset:0 + .on 切换）。
+   z-index 取 70：在 #viewer(60) 之上、#busy(80)/#askname(82) 之下 ——
+   店主正在改名 / 切图 / 看大图时不会被它盖住（JS 那边也会先跳过不弹）。
+   颜色全走 --card/--fg/--dim 变量，深浅主题都不用另写一套。 */
+#updpop{
+  position:fixed;inset:0;z-index:70;background:rgba(0,0,0,.4);
+  display:none;align-items:center;justify-content:center;padding:24px;
+}
+#updpop.on{display:flex}
+#updpop .box{
+  background:var(--card);border-radius:14px;padding:20px 22px 18px;width:min(360px,100%);
+  box-shadow:0 12px 40px rgba(0,0,0,.25);
+  max-height:calc(100vh - 48px);display:flex;flex-direction:column;
+}
+#updpop .bt{font-size:17px;font-weight:700;margin-bottom:6px}
+#updpop .bt .v{color:var(--primary);margin-left:4px}
+#updpop .bd{font-size:13px;color:var(--dim);line-height:1.6}
+#updpop pre{
+  margin:10px 0 0;padding:10px 12px;border:1px solid var(--line);border-radius:10px;
+  white-space:pre-wrap;word-break:break-word;font-size:13px;color:var(--fg);
+  font-family:inherit;line-height:1.55;max-height:38vh;overflow:auto;min-height:0;
+}
+#updpop .ops{margin-top:16px;flex:none}
+#updpop .ops button{
+  width:100%;font-family:inherit;font-size:15px;padding:12px 0;border-radius:11px;cursor:pointer;
+  border:0;background:var(--primary);color:#fff;font-weight:600;
+}
+#updpop .ops button:active{opacity:.8}
+#updpop .ops2{display:flex;gap:10px;margin-top:10px;flex:none}
+#updpop .ops2 button{
+  flex:1;font-family:inherit;font-size:13px;padding:10px 6px;border-radius:11px;cursor:pointer;
+  border:0;background:var(--chip);color:var(--dim);white-space:nowrap;
+}
+#updpop .ops2 button:active{opacity:.8}
+
 .settings-dot{position:relative}
 .settings-dot.upd-dot::after{
   content:"";position:absolute;top:-2px;right:-2px;width:8px;height:8px;border-radius:50%;
@@ -588,6 +625,25 @@ code{background:var(--chip);padding:1px 5px;border-radius:5px;font-size:12px;wor
     <div class="ops">
       <button id="askcancel">取消</button>
       <button id="askok">好</button>
+    </div>
+  </div>
+</div>
+
+<!-- 启动时的新版本提醒弹窗（2026-09-26）。
+     只在「静默检查」发现新版本时弹；手动点「检查更新」不弹 —— 那时店主正看着版本更新卡片，
+     再盖一层纯属打扰。两个关闭语义分开：
+       稍后          = 关掉，本次启动不再弹，**下次启动还会提醒**；
+       不再提醒此版本 = 版本号写进本机 localStorage，这个版本永久不弹（卡片里仍能更新）。
+     ⚠️ 更新说明一律 textContent，不 innerHTML（内容来自网络，防注入）。 -->
+<div id="updpop">
+  <div class="box">
+    <div class="bt">发现新版本<span class="v" id="updPopVer"></span></div>
+    <div class="bd">可以在 App 内直接下载安装，不用来回传文件。</div>
+    <pre id="updPopBody"></pre>
+    <div class="ops"><button id="updPopGo">立即更新</button></div>
+    <div class="ops2">
+      <button id="updPopLater">稍后</button>
+      <button id="updPopNever">不再提醒此版本</button>
     </div>
   </div>
 </div>
@@ -2884,11 +2940,13 @@ function applyAll(){
  *            网页版没有原生桥，只能跳发布页让用户手动下 APK。
  * 装完自动删包：原生侧在下次启动时比对「尝试安装的版本 == 当前运行版本」，一致即删。
  *
- * 🔴 四条红线（踩过的坑，别改）：
+ * 🔴 五条红线（踩过的坑，别改）：
  * 1. 「检查失败」≠「已是最新」—— api.latestRelease 抛异常 = 没查成，必须原样报「检查失败」。
  * 2. 下载和安装必须分开两次点击（Android 12+ 近似安装限制，下完自动装会被系统忽略）。
- * 3. 更新说明走 textContent，不 innerHTML（内容来自网络，防注入）。
- * 4. 网页版装不了，别假装能装——跳发布页并把话说清楚。 */
+ * 3. 更新说明走 textContent，不 innerHTML（内容来自网络，防注入；启动弹窗里同样）。
+ * 4. 网页版装不了，别假装能装——跳发布页并把话说清楚。
+ * 5. 启动提醒弹窗只在「静默检查」发现新版本时弹，手动点「检查更新」不弹 —— 那时店主正看着
+ *    版本更新卡片，再盖一层纯属打扰。 */
 
 const UPD_REPO = 'https://api.github.com/repos/xyyzz6/cigpricer/releases/latest';
 
@@ -2916,6 +2974,31 @@ function cmpVersion(a, b) {
 }
 
 const UPD = { release: null, latest: '', url: '', sha: '', size: 0, downloading: false, installing: false };
+
+/* 启动提醒弹窗的状态。
+   - updPopShown：本次页面加载（≈ 一次启动）只弹一次。用模块级变量就够 ——
+     WebView 页面跨 onResume 不会重建，所以点「稍后」关掉后回到前台不会再冒出来。
+   - LS_UPDSKIP：店主点过「不再提醒此版本」的那个版本号，存本机
+     （跟快捷词、单列双列一样，属于店主自己的习惯，不进同步）。 */
+const LS_UPDSKIP = 'cigpricer.updSkip';
+let updPopShown = false;
+function updSkippedVer() {
+  try { return localStorage.getItem(LS_UPDSKIP) || ''; } catch (_) { return ''; }
+}
+/** 该不该弹：静默检查刚发现新版本 + 没被「不再提醒」屏蔽 + 没有别的弹层开着 */
+function updPopOpen() {
+  if (updPopShown || !UPD.release || !UPD.latest) return;
+  if (updSkippedVer() === UPD.latest) return;
+  // 店主正在改名 / 切图 / 看大图时先不打扰 —— 这里**不置** updPopShown，
+  // 等下次检查（回到前台）已经空闲了再弹出来，不然这条提醒就永远丢了。
+  if ($('#askname').classList.contains('on') || $('#busy').classList.contains('on')
+      || $('#viewer').classList.contains('on')) return;
+  updPopShown = true;
+  const v = $('#updPopVer'); if (v) v.textContent = 'v' + UPD.latest;
+  const b = $('#updPopBody'); if (b) b.textContent = releaseNoteText(UPD.release.body || '');
+  $('#updpop').classList.add('on');
+}
+function updPopClose() { $('#updpop').classList.remove('on'); }
 
 /** 挑出本机要装的 APK：本项目只发一个通用包 cigpricer.apk */
 function pickAsset(rel) {
@@ -3007,6 +3090,8 @@ async function checkUpdate(silent) {
     $('#updNew').hidden = false;
     updSetNote(asset ? '可以直接在 App 内下载安装。' : '这个版本没有适合的安装包，请到发布页看看。');
     updRender();
+    // 只有「静默检查」才主动弹窗提醒。手动点「检查更新」不弹 —— 那时店主正盯着这张卡片。
+    if (silent) updPopOpen();
   } catch (e) {
     UPD.release = null; UPD.latest = ''; UPD.url = '';
     updRender();
@@ -3088,6 +3173,24 @@ $('#updDiscard').addEventListener('click', () => {
   updRender();
 });
 
+/* 启动提醒弹窗的三个动作。
+   ⚠️「立即更新」不另写一套下载逻辑，直接点 #updGo —— 下载 / 进度 / 安装那条链路只留一份实现，
+   将来改（比如加校验）不会漏掉弹窗这条入口。 */
+$('#updPopGo').addEventListener('click', () => {
+  updPopClose();
+  document.querySelector('.tabs button[data-tab="p-mgr"]').click();   // 切到管理页，进度条在那儿
+  $('#updGo').click();
+});
+$('#updPopLater').addEventListener('click', () => {
+  // 只是关掉：updPopOpen 里已经置过 updPopShown，本次启动不会再弹；下次启动照旧提醒
+  updPopClose();
+});
+$('#updPopNever').addEventListener('click', () => {
+  try { localStorage.setItem(LS_UPDSKIP, UPD.latest || ''); } catch (_) {}
+  updPopClose();
+  updSetNote('已设为「不再提醒 v' + (UPD.latest || '') + '」，想更新时在本卡片点「下载并安装」即可。');
+});
+
 /* 启动：补删「上次装成功了」的残留包 + 启动后尽快静默查一次更新；
    之后每次 App 回到前台（原生 onResume 调 __appResume）都再查一次，
    做到「每次启动 / 回到前台都自动检测有没有更新」。 */
@@ -3153,6 +3256,9 @@ if (location.hash === '#all') document.querySelector('[data-tab="p-all"]').click
 window.__backHook = function(){
   // 输入框开着时，返回键 = 取消。不然会直接切回搜索页 / 退出 App，名字问到一半就断了。
   if ($('#askname').classList.contains('on')){ askClose(null); return true; }
+  // 更新提醒弹窗开着时，返回键 = 「稍后」：关掉，本次启动不再弹。
+  // 不拦的话会直接切回搜索页 / 退出 App，弹窗还挂在那儿，很怪。
+  if ($('#updpop').classList.contains('on')){ updPopClose(); return true; }
   if (viewer.classList.contains('on')){ closeViewer(); return true; }
   const on = document.querySelector('.tabs button.on');
   if (on && on.dataset.tab !== 'p-search'){

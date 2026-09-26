@@ -51,8 +51,8 @@ const APP = {
   //    versionCode 是安卓判断"谁更新"的唯一依据，只许单调递增 ——
   //    网上重装覆盖不了、提示"应用未安装"基本都是它变小或换签名导致的。
   //    想手动起一个新基线（比如发 1.1）就自己改这儿，下一轮从 1.1.1 接着涨。
-  versionCode: 42,
-  versionName: '1.0.41',
+  versionCode: 43,
+  versionName: '1.0.42',
   keystore: path.join(HERE, 'cigpricer.keystore'),
   ksPass: 'cigpricer',
   ksAlias: 'cigpricer',
