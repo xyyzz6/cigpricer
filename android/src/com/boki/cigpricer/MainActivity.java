@@ -362,6 +362,20 @@ public class MainActivity extends Activity {
 
     // ------------------------------------------------------------------ 生命周期
 
+    /**
+     * 每次 App 回到前台都让页面自动查一次更新（含：装完更新被系统重启、从别的 App 切回来）。
+     * 页面就绪前 __appResume 还没定义，这里用 try/if 包住，没定义就空过，不会有副作用。
+     * 具体"多久查一次"的节流由 window.updAutoCheck 里的 1 分钟窗口控制，避免反复打 GitHub。
+     */
+    @Override
+    protected void onResume() {
+        super.onResume();
+        if (web != null) {
+            web.evaluateJavascript(
+                    "try{if(window.__appResume)window.__appResume();}catch(e){}", null);
+        }
+    }
+
     @Override
     protected void onDestroy() {
         if (web != null) {

@@ -2929,6 +2929,11 @@ function updCached() {
 }
 
 async function checkUpdate(silent) {
+  // 正在下载 / 安装中就别去查：下面会清空 UPD.url，会把进行中的下载搞废
+  if (UPD.downloading || UPD.installing) {
+    if (!silent) updSetNote('正在下载 / 安装中，稍后再检查。');
+    return;
+  }
   const btn = $('#updCheck');
   if (!silent && btn) { btn.disabled = true; btn.textContent = '检查中…'; }
   // 开查前清空目标版本：等待网络的间隙里用户若点按钮，不会拿旧版本号去匹配缓存
@@ -3039,15 +3044,33 @@ $('#updDiscard').addEventListener('click', () => {
   updRender();
 });
 
-/* 启动：补删「上次装成功了」的残留包 + 6 秒后静默查一次更新 */
+/* 启动：补删「上次装成功了」的残留包 + 启动后尽快静默查一次更新；
+   之后每次 App 回到前台（原生 onResume 调 __appResume）都再查一次，
+   做到「每次启动 / 回到前台都自动检测有没有更新」。 */
+let UPD_LAST_CHECK = 0;
+function updAutoCheck() {
+  const now = Date.now();
+  if (now - UPD_LAST_CHECK < 60000) return;   // 同一前台会话 1 分钟内只查一次，避免反复打 GitHub
+  UPD_LAST_CHECK = now;
+  try { checkUpdate(true); } catch (_) {}
+}
 function updInit() {
   const v = appVersion().name;
   if (v && window.NasBridge && window.NasBridge.updSweep) {
     try { window.NasBridge.updSweep(v); } catch (_) {}
   }
   updRender();
-  setTimeout(() => { try { checkUpdate(true); } catch (_) {} }, 6000);
+  // 页面就绪后尽快查一次（原先是 6 秒，太慢）；2.5 秒足够让 NasBridge 与首屏渲染稳下来
+  setTimeout(updAutoCheck, 2500);
 }
+// 原生 onResume 调它：App 每次回到前台都自动检测一次（含装完更新被系统重启后）
+window.__appResume = function () {
+  const v = appVersion().name;
+  if (v && window.NasBridge && window.NasBridge.updSweep) {
+    try { window.NasBridge.updSweep(v); } catch (_) {}
+  }
+  updAutoCheck();
+};
 updInit();
 
 (async function boot(){
