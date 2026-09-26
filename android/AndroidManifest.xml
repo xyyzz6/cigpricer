@@ -10,12 +10,16 @@
     <uses-sdk android:minSdkVersion="24" android:targetSdkVersion="34" />
 
     <!--
-      唯一的权限是联网，只为一个用途：「认字」页签调 AI 读商品名（用户自己填的 API）。
-      其余全部照旧离线 —— 页面、切图、整表都在 assets 里，导入的表存在 WebView 的
-      IndexedDB 里。**搜索、看图、换照片、导入表包这些都不需要网络**，断网也能用。
+      权限有两类用途：
+      1. 联网（INTERNET）：「认字」页签调 AI 读商品名（用户自己填的 API）。
+         其余全部照旧离线 —— 页面、切图、整表都在 assets 里，导入的表存在 WebView 的
+         IndexedDB 里。**搜索、看图、换照片、导入表包这些都不需要网络**，断网也能用。
+      2. 安装未知来源（REQUEST_INSTALL_PACKAGES）：应用内更新，下载 APK 后拉起系统安装器。
+         Android 12+ 还需要用户手动在设置里开「允许来自此来源的应用」，装完会自动删包。
       ⚠️ 别再往这里加别的权限（尤其别加读存储/通讯录）；要加先问一句是不是非加不可。
     -->
     <uses-permission android:name="android.permission.INTERNET" />
+    <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />
 
     <application
         android:allowBackup="true"
@@ -38,5 +42,17 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
+
+        <!--
+          应用内更新用的只读 FileProvider（2026-09-26）。
+          exported 必须 false（不接受外部调用），授权靠安装 Intent 上的 FLAG_GRANT_READ_URI_PERMISSION 单发。
+          grantUriPermissions=true 才发得出 content:// 授权。
+          authorities 必须与 UpdateProvider.AUTHORITY 和 MainActivity 调用处三处一致。
+        -->
+        <provider
+            android:name=".UpdateProvider"
+            android:authorities="com.boki.cigpricer.update"
+            android:exported="false"
+            android:grantUriPermissions="true" />
     </application>
 </manifest>

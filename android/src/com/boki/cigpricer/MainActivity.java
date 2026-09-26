@@ -4,6 +4,8 @@ import android.annotation.SuppressLint;
 import android.app.Activity;
 import android.content.ActivityNotFoundException;
 import android.content.Intent;
+import android.content.pm.PackageInfo;
+import android.content.pm.PackageManager;
 import android.content.res.Configuration;
 import android.net.Uri;
 import android.os.Build;
@@ -57,9 +59,15 @@ import java.nio.charset.StandardCharsets;
  * 但店主导入过的表会一个都不剩，而且**看起来就像被删了**。
  * 真要改，得同时做一次迁移（旧来源读出来 → 新来源写进去）。
  *
- * <h3>没有申请任何权限</h3>
- * manifest 里一条 uses-permission 都没有：页面、切图、整表全在 assets 里，
- * 导入的表存在 App 自己的 WebView 数据目录里。<b>这个 App 物理上不可能联网。</b>
+ * <h3>权限只有两类</h3>
+ * <ol>
+ *   <li><b>INTERNET</b>：「认字」页签调 AI 读商品名（用户自己填的 API）。其余功能——
+ *       页面、切图、整表全在 assets 里，导入的表存在 App 自己的 WebView 数据目录里——
+ *       <b>断网也能用</b>，不需要联网。</li>
+ *   <li><b>REQUEST_INSTALL_PACKAGES</b>：应用内更新，下载 APK 后拉起系统安装器（2026-09-26 加）。
+ *       Android 12+ 还需用户在设置里手动开「允许来自此来源的应用」。</li>
+ * </ol>
+ * 不读外部存储、不拿任何别的权限——这才是这个 App 的底线。
  */
 public class MainActivity extends Activity {
 
@@ -92,6 +100,9 @@ public class MainActivity extends Activity {
         }
 
         configure(web.getSettings());
+
+        // 应用内更新需要原生桥：下载 / 安装 / 装完删包 / 读版本号（2026-09-26）
+        web.addJavascriptInterface(new CigBridge(), "NasBridge");
 
         web.setWebViewClient(new WebViewClient() {
             @Override
@@ -358,5 +369,51 @@ public class MainActivity extends Activity {
             web = null;
         }
         super.onDestroy();
+    }
+
+    // ------------------------------------------------------------------ 应用内更新桥
+
+    /**
+     * 前端 window.NasBridge.* 与原生 UpdateInstaller 之间的桥接（2026-09-26，移植自 douyin-nas）。
+     *
+     * <h3>为什么加这个</h3>
+     * 应用内更新需要原生能力：流式下载大文件、SHA-256 校验、用 FileProvider 拉起系统安装器、
+     * 装完回不到 App（安装器是另一个进程）所以要靠「下次启动运行版本 == 上次交给安装器的版本」来判成功删包。
+     * 这些网页都做不到，只能走原生桥。
+     *
+     * <h3>网页版没原生层</h3>
+     * 桌面/浏览器里打开时没有这个桥，appVersion() 会抛错；页面侧已 try/catch 兜底成空版本，
+     * 「检查更新」卡片只是不显示，不影响别的功能。
+     */
+    private class CigBridge {
+        private UpdateInstaller updater;
+        private UpdateInstaller updater() {
+            if (updater == null) updater = new UpdateInstaller(MainActivity.this, web);
+            return updater;
+        }
+        @android.webkit.JavascriptInterface
+        public String appVersion() {
+            try {
+                PackageInfo pi = getPackageManager().getPackageInfo(getPackageName(), 0);
+                return (pi.versionName == null ? "" : pi.versionName) + "|" + pi.versionCode;
+            } catch (Throwable t) { return "|0"; }
+        }
+        @android.webkit.JavascriptInterface
+        public void updDownload(String url, String sha256, String version) {
+            updater().download(url, sha256, version);
+        }
+        @android.webkit.JavascriptInterface
+        public void updInstall() { updater().install(); }
+        @android.webkit.JavascriptInterface
+        public void updClear() { updater().clear(); }
+        @android.webkit.JavascriptInterface
+        public boolean updHasPackage(String version) { return updater().hasDownloaded(version); }
+        @android.webkit.JavascriptInterface
+        public void updSweep(String curVersion) { updater().sweepAfterInstall(curVersion); }
+        @android.webkit.JavascriptInterface
+        public String deviceAbi() {
+            try { String[] a = Build.SUPPORTED_ABIS; return (a != null && a.length > 0) ? a[0] : ""; }
+            catch (Throwable t) { return ""; }
+        }
     }
 }

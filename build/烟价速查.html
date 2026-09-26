@@ -361,6 +361,35 @@ code{background:var(--chip);padding:1px 5px;border-radius:5px;font-size:12px;wor
 #synccard .sm.pri{background:var(--primary);color:#fff}
 #synccard .sm:disabled{opacity:.45}
 #syncOn{width:17px;height:17px;accent-color:var(--primary);flex:none}
+/* ---------- 版本更新卡片（应用内更新，2026-09-26） ---------- */
+#updcard{cursor:default;padding:16px}
+#updcard:active{transform:none}
+#updcard .note{font-size:13px;color:var(--dim);line-height:1.6}
+#updcard .row{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+#updcard .sm{
+  border:0;font-family:inherit;font-size:14px;font-weight:600;cursor:pointer;
+  background:var(--chip);color:var(--fg);padding:10px 18px;border-radius:10px;
+}
+#updcard .sm:active{opacity:.75}
+#updcard .sm.pri{background:var(--primary);color:#fff}
+#updcard .sm:disabled{opacity:.45}
+.upd-head{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:8px}
+.upd-head .t{font-size:15px;font-weight:600}
+.upd-cur{font-size:13px;color:var(--dim)}
+.upd-cur b{color:var(--fg);font-weight:600}
+.upd-bar{height:6px;border-radius:99px;background:var(--chip);overflow:hidden;margin:8px 0 2px;display:none}
+.upd-bar > i{display:block;height:100%;width:0;background:var(--primary);transition:width .2s}
+.upd-new{display:none;margin:10px 0 0;padding:10px 12px;border:1px solid var(--line);border-radius:10px}
+.upd-new .v{font-weight:700;color:var(--primary);margin-left:4px}
+.upd-new pre{margin:8px 0 0;white-space:pre-wrap;word-break:break-word;font-size:13px;color:var(--fg);
+  max-height:160px;overflow:auto;font-family:inherit;line-height:1.55}
+#updNote{font-size:13px;line-height:1.6;margin-top:8px;color:var(--dim)}
+#updNote:empty{display:none}
+.settings-dot{position:relative}
+.settings-dot.upd-dot::after{
+  content:"";position:absolute;top:-2px;right:-2px;width:8px;height:8px;border-radius:50%;
+  background:#ff3b30;border:2px solid var(--card);
+}
 /* 管理页表行里的商品数小徽章（<span class="tag">，老版式类名，同样补上） */
 .trow .tag{
   font-style:normal;font-size:11px;font-weight:600;color:var(--dim);
@@ -482,6 +511,24 @@ code{background:var(--chip);padding:1px 5px;border-radius:5px;font-size:12px;wor
         <div class="note" id="syncLast" style="margin-top:6px"></div>
         <div class="note" style="margin-top:6px;color:var(--fg)">✓ 已开启自动同步：改动后约 5 秒自动上传，并每 60 秒拉取其它设备的改动，不用再手动点「立即同步」。</div>
       </div>
+    </div>
+    <div class="card" id="updcard" style="margin-top:18px">
+      <div class="upd-head">
+        <span class="t">版本更新</span>
+        <span class="upd-cur">当前 <b id="updCur">…</b></span>
+      </div>
+      <div class="note">检测到新版本可在 App 内直接下载安装，不用来回传文件。</div>
+      <div class="row" style="margin-top:10px">
+        <button class="sm" id="updCheck">检查更新</button>
+        <button class="sm pri" id="updGo" hidden>下载并安装</button>
+        <button class="sm" id="updDiscard" hidden>取消下载</button>
+      </div>
+      <div class="upd-bar" id="updBar"><i id="updBarFill"></i></div>
+      <div class="upd-new" id="updNew">
+        <div>发现新版本<span class="v" id="updNewVer"></span></div>
+        <pre id="updBody"></pre>
+      </div>
+      <div id="updNote"></div>
     </div>
   </section>
 
@@ -1889,6 +1936,7 @@ document.querySelectorAll('.tabs button').forEach(b => {
     $('#' + b.dataset.tab).classList.add('on');
     if (b.dataset.tab === 'p-sheet') requestAnimationFrame(sheetApply);
     if (b.dataset.tab === 'p-ocr') loadOcr();
+    if (b.dataset.tab === 'p-mgr') updRender();
   };
 });
 
@@ -2785,6 +2833,223 @@ function applyAll(){
 }
 
 /* ================== 启动 ================== */
+/* ================== 应用内更新（2026-09-26，移植自 douyin-nas 的内置更新链路） ==================
+ *
+ * 数据源：GitHub Releases 的 `releases/latest`（公开仓库，匿名可读，不需要 token）。
+ * 下载 / 安装：交给原生桥 NasBridge（App 内）→ FileProvider → 系统安装器；
+ *            网页版没有原生桥，只能跳发布页让用户手动下 APK。
+ * 装完自动删包：原生侧在下次启动时比对「尝试安装的版本 == 当前运行版本」，一致即删。
+ *
+ * 🔴 四条红线（踩过的坑，别改）：
+ * 1. 「检查失败」≠「已是最新」—— api.latestRelease 抛异常 = 没查成，必须原样报「检查失败」。
+ * 2. 下载和安装必须分开两次点击（Android 12+ 近似安装限制，下完自动装会被系统忽略）。
+ * 3. 更新说明走 textContent，不 innerHTML（内容来自网络，防注入）。
+ * 4. 网页版装不了，别假装能装——跳发布页并把话说清楚。 */
+
+const UPD_REPO = 'https://api.github.com/repos/xyyzz6/cigpricer/releases/latest';
+
+/** 当前版本：App 内由 NasBridge.appVersion() 返回 "name|code"；网页版拿不到就留空 */
+function appVersion() {
+  try {
+    if (window.NasBridge && window.NasBridge.appVersion) {
+      const p = String(window.NasBridge.appVersion()).split('|');
+      return { name: (p[0] || '').trim(), code: parseInt(p[1] || '0', 10) || 0 };
+    }
+  } catch (_) {}
+  return { name: '', code: 0 };
+}
+
+/** 版本号逐段数字比（"1.0.9" < "1.0.10"，字符串比 / parseFloat 都错） */
+function cmpVersion(a, b) {
+  const seg = s => String(s == null ? '' : s).replace(/^v/i, '').split('.')
+    .map(x => parseInt(x, 10)).map(n => Number.isFinite(n) ? n : 0);
+  const A = seg(a), B = seg(b), n = Math.max(A.length, B.length);
+  for (let i = 0; i < n; i++) {
+    const x = A[i] || 0, y = B[i] || 0;
+    if (x !== y) return x - y;
+  }
+  return 0;
+}
+
+const UPD = { release: null, latest: '', url: '', sha: '', size: 0, downloading: false, installing: false };
+
+/** 挑出本机要装的 APK：本项目只发一个通用包 cigpricer.apk */
+function pickAsset(rel) {
+  const assets = (rel && rel.assets) || [];
+  const apks = assets.filter(a => /\.apk$/i.test(a.name || ''));
+  if (!apks.length) return null;
+  return apks.find(a => /cigpricer/i.test(a.name || '')) || apks[0];
+}
+
+/** GitHub 不提供资产 sha256，只做字节数比对（诚实说明：挡不住中间人替换） */
+function assetSize(asset) { return asset && asset.size ? Number(asset.size) : 0; }
+
+function releaseNoteText(body) {
+  return String(body || '')
+    .replace(/\r/g, '')
+    .replace(/^#{1,6}\s*/gm, '')
+    .replace(/^>\s?/gm, '')
+    .replace(/^[-*]\s+/gm, '· ')
+    .replace(/\*\*([^*]+)\*\*/g, '$1')
+    .replace(/`([^`]+)`/g, '$1')
+    .replace(/\[([^\]]+)\]\([^)]*\)/g, '$1')
+    .replace(/\n{3,}/g, '\n\n')
+    .trim();
+}
+
+function updSetNote(text, bad) {
+  const el = $('#updNote');
+  if (!el) return;
+  el.textContent = text || '';
+  el.style.color = bad ? 'var(--bad-fg, #e03a3a)' : '';
+}
+
+function updRender() {
+  const cur = $('#updCur');
+  if (cur) {
+    const v = appVersion();
+    cur.textContent = v.name ? ('v' + v.name) : '网页版';
+  }
+  const go = $('#updGo');
+  if (go) {
+    go.hidden = !UPD.release;
+    const ready = UPD.downloading ? false : updCached();
+    go.textContent = UPD.downloading ? '下载中…' : (ready ? '安装' : '下载并安装');
+    go.disabled = UPD.downloading;
+  }
+  const dis = $('#updDiscard');
+  if (dis) dis.hidden = UPD.downloading || !updCached();
+}
+
+/** 缓存里是否已有「正好是这个版本」的包（现问原生，不记内存标志，重启仍准） */
+function updCached() {
+  if (!(window.NasBridge && window.NasBridge.updHasPackage)) return false;
+  if (!UPD.latest) return false;
+  try { return !!window.NasBridge.updHasPackage(UPD.latest); } catch (_) { return false; }
+}
+
+async function checkUpdate(silent) {
+  const btn = $('#updCheck');
+  if (!silent && btn) { btn.disabled = true; btn.textContent = '检查中…'; }
+  // 开查前清空目标版本：等待网络的间隙里用户若点按钮，不会拿旧版本号去匹配缓存
+  UPD.latest = ''; UPD.url = '';
+  try {
+    const rel = await fetch(UPD_REPO, { cache: 'no-store', headers: { Accept: 'application/vnd.github+json' } });
+    if (!rel.ok) throw new Error('HTTP ' + rel.status);
+    const j = await rel.json();
+    const latest = String((j && (j.tag_name || j.name)) || '').replace(/^v/i, '');
+    const curV = appVersion().name;
+    const newer = curV && cmpVersion(latest, curV) > 0;
+    if (!newer) {
+      UPD.release = null; UPD.latest = ''; UPD.url = '';
+      updRender();
+      $('#updNew').hidden = true;
+      if (!silent) updSetNote('已是最新版本（v' + (curV || '?') + '）。');
+      return;
+    }
+    UPD.release = j;
+    UPD.latest = latest;
+    const asset = pickAsset(j);
+    UPD.url = asset ? asset.browser_download_url : '';
+    UPD.sha = '';
+    UPD.size = assetSize(asset);
+    const nv = $('#updNewVer'); if (nv) nv.textContent = 'v' + latest;
+    const bd = $('#updBody'); if (bd) bd.textContent = releaseNoteText(j.body);
+    $('#updNew').hidden = false;
+    updSetNote(asset ? '可以直接在 App 内下载安装。' : '这个版本没有适合的安装包，请到发布页看看。');
+    updRender();
+  } catch (e) {
+    UPD.release = null; UPD.latest = ''; UPD.url = '';
+    updRender();
+    if (!silent) updSetNote('检查失败：' + (e && e.message ? e.message : '网络不通') + '。请稍后再试。', true);
+  } finally {
+    if (!silent && btn) { btn.disabled = false; btn.textContent = '检查更新'; }
+  }
+}
+
+function updGo() {
+  if (!UPD.url) {
+    try { window.open('https://github.com/xyyzz6/cigpricer/releases/latest', '_blank'); }
+    catch (_) { location.href = 'https://github.com/xyyzz6/cigpricer/releases/latest'; }
+    return;
+  }
+  if (!(window.NasBridge && window.NasBridge.updDownload)) {
+    updSetNote('网页版没法直接安装，正在打开发布页，请下载 APK 手动安装。');
+    try { window.open(UPD.url, '_blank'); } catch (_) { location.href = UPD.url; }
+    return;
+  }
+  if (updCached() && !UPD.downloading) { updInstall(); return; }
+  UPD.downloading = true; updRender();
+  const bar = $('#updBar'); if (bar) bar.hidden = false;
+  updSetNote('正在下载更新包，请保持网络畅通…');
+  try { window.NasBridge.updDownload(UPD.url, UPD.sha || '', UPD.latest || ''); }
+  catch (e) { UPD.downloading = false; updRender(); updSetNote('下载启动失败：' + e.message, true); }
+}
+
+function updInstall() {
+  UPD.installing = true; updRender();
+  updSetNote('正在打开系统安装界面…');
+  try { window.NasBridge.updInstall(); }
+  catch (e) { updSetNote('安装启动失败：' + e.message, true); UPD.installing = false; updRender(); }
+}
+
+window.__updProgress = (pct, done, total) => {
+  const fill = $('#updBarFill');
+  if (fill) fill.style.width = Math.max(0, Math.min(100, pct)) + '%';
+  updSetNote(`正在下载 ${Math.round(pct)}%（${(+done).toFixed(1)} / ${(+total).toFixed(1)} MB）`);
+};
+
+window.__updDone = (r) => {
+  UPD.downloading = false;
+  const bar = $('#updBar');
+  // 原生 install() 成功拉起系统安装器后回 {ok,installing:true}：包已交出去，App 切后台等装完。
+  // 此时不能当成"下载完成请点安装"，否则会再冒一个安装按钮误导用户。
+  if (r && r.ok && r.installing) {
+    if (bar) bar.hidden = true;
+    UPD.installing = true;
+    updSetNote('已打开系统安装器，请按提示完成升级。装完会自动回到 App 并删掉安装包。');
+    updRender();
+    return;
+  }
+  if (r && r.ok) {
+    if (bar) bar.hidden = true;
+    updSetNote('下载完成。点「安装」开始升级。');
+    const go = $('#updGo'); if (go) { go.disabled = false; go.hidden = false; }
+    UPD.installing = false;
+    updRender();
+    return;
+  }
+  if (bar) bar.hidden = true;
+  if (r && r.err === 'NEED_UNKNOWN_SOURCE') {
+    updSetNote('需要先允许「安装未知应用」：已在系统设置里打开页面，开启后回来再点一次。');
+    UPD.installing = false; updRender(); return;
+  }
+  updSetNote('下载失败：' + ((r && r.err) || '未知错误'), true);
+  UPD.installing = false; updRender();
+};
+
+$('#updCheck').addEventListener('click', () => checkUpdate(false));
+$('#updGo').addEventListener('click', () => {
+  if (updCached() && !UPD.downloading) { updInstall(); return; }
+  updGo();
+});
+$('#updDiscard').addEventListener('click', () => {
+  try { if (window.NasBridge && window.NasBridge.updClear) window.NasBridge.updClear(); } catch (_) {}
+  updSetNote('已取消，安装包已删除。想装的时候可以重新下载。');
+  updRender();
+});
+
+/* 启动：补删「上次装成功了」的残留包 + 6 秒后静默查一次更新 */
+function updInit() {
+  const v = appVersion().name;
+  if (v && window.NasBridge && window.NasBridge.updSweep) {
+    try { window.NasBridge.updSweep(v); } catch (_) {}
+  }
+  updRender();
+  setTimeout(() => { try { checkUpdate(true); } catch (_) {} }, 6000);
+}
+updInit();
+
 (async function boot(){
   try { db = await idbOpen(); STORE_OK = true; }
   catch (e) { STORE_OK = false; STORE_WHY = (e && (e.name || e.message)) || '未知原因'; }

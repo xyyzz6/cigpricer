@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  应用内更新用的 FileProvider 路径映射（2026-09-26）。
+  cache-path 对应 Context.getCacheDir()，path="update/" 即 cacheDir/update/ ——
+  必须与 UpdateInstaller 里的 new File(getCacheDir(), "update") 完全一致，否则 content:// 取不到文件。
+  name="update" 是给外部（系统安装器）看到的别名，随便起，但要保证唯一。
+-->
+<paths>
+    <cache-path name="update" path="update/" />
+</paths>

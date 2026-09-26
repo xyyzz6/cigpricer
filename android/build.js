@@ -51,8 +51,8 @@ const APP = {
   //    versionCode 是安卓判断"谁更新"的唯一依据，只许单调递增 ——
   //    网上重装覆盖不了、提示"应用未安装"基本都是它变小或换签名导致的。
   //    想手动起一个新基线（比如发 1.1）就自己改这儿，下一轮从 1.1.1 接着涨。
-  versionCode: 39,
-  versionName: '1.0.38',
+  versionCode: 40,
+  versionName: '1.0.39',
   keystore: path.join(HERE, 'cigpricer.keystore'),
   ksPass: 'cigpricer',
   ksAlias: 'cigpricer',
@@ -389,9 +389,10 @@ function sanityCheck(apk, htmlInfo) {
   return { entries, dexes, htmlBytes: inApk.length };
 }
 
-/** 权限自检：只允许 INTERNET（「认字」页签调 AI 用的），多一个都不行。
-    2026-09-25 之前这里是"零权限"，认字做进 App 之后必须联网，
-    但仍要守住"不读外部存储 / 不拿任何别的权限"这条线 —— 这才是这个 App 的底线。 */
+/** 权限自检：只允许 INTERNET（「认字」页签调 AI 用）与 REQUEST_INSTALL_PACKAGES（应用内更新拉起系统安装器）。
+    2026-09-25 之前这里是"零权限"，认字做进 App 之后必须联网；2026-09-26 加应用内更新，
+    又必须能拉起系统安装器（Android 12+ 还需用户在设置里手动开"允许来自此来源的应用"）。
+    仍要守住"不读外部存储 / 不拿任何别的权限"这条线 —— 这才是这个 App 的底线。 */
 function checkPermissions(aapt2, apk) {
   let out = '';
   try {
@@ -400,14 +401,22 @@ function checkPermissions(aapt2, apk) {
     warn('aapt2 dump permissions 没跑起来，跳过权限检查');
     return;
   }
+  const allowed = new Set([
+    'android.permission.INTERNET',
+    'android.permission.REQUEST_INSTALL_PACKAGES',
+  ]);
   const got = (out.match(/uses-permission: name='([^']+)'/g) || [])
     .map((s) => s.replace(/uses-permission: name='/, '').replace(/'$/, ''));
-  const extra = got.filter((p) => p !== 'android.permission.INTERNET');
+  const extra = got.filter((p) => !allowed.has(p));
   if (extra.length) {
-    fatal('APK 里出现了不该有的权限 —— 只允许 INTERNET（认字联网用）：\n' + extra.join('\n') + '\n' + out);
+    fatal('APK 里出现了不该有的权限 —— 只允许 INTERNET + REQUEST_INSTALL_PACKAGES（认字联网 + 应用内更新）：\n'
+      + extra.join('\n') + '\n' + out);
   }
-  if (!got.length) warn('APK 里没有 INTERNET 权限 —— 「认字」页签会调不通（其余功能不受影响）');
-  else ok('权限干净：只有 INTERNET（认字联网；搜索看图换照片全离线）');
+  if (!got.includes('android.permission.INTERNET')) {
+    warn('APK 里没有 INTERNET 权限 —— 「认字」页签会调不通（其余功能不受影响）');
+  }
+  const have = got.map((p) => p.replace('android.permission.', '')).join(' + ') || '（无）';
+  ok('权限干净：' + have + '（搜索看图换照片全离线）');
 }
 
 // ------------------------------------------------------------------ 主流程
