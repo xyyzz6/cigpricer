@@ -975,6 +975,51 @@ const getJSON = url => new Promise((res, rej) => {
   check('未启用同步时 doSync 直接返回（不联网）',
     await ev(`doSync().then(r=>r.ok===false && r.msg==='未启用同步')`) === true);
 
+  /* 单列 / 双列切换（2026-09-26 加）
+     守三件事：① 默认必须是单列（店主看惯的那版，不能让老用户一进来就变样）；
+               ② 切双列真的并排（左边不同、顶边对齐、卡片变窄），图还不能被拉变形；
+               ③ 这是店主的习惯，刷新后得记住。 */
+  await ev(`document.querySelector("[data-tab='p-search']").click()`); await sleep(300);
+  await setQ('中华');
+  check('计数行里有单列/双列切换',
+    await ev(`!!document.querySelector('#cnt .segsm button[data-g="1"]') && !!document.querySelector('#cnt .segsm button[data-g="2"]')`));
+  check('默认单列（结果区不带 g2）', await ev(`!document.querySelector('#res').classList.contains('g2')`));
+  check('默认高亮在「单列」上', await ev(`document.querySelector('#cnt .segsm button.on').dataset.g`) === '1');
+
+  const colGeo = async () => JSON.parse(await ev(`JSON.stringify((()=>{
+    const cs = [...document.querySelectorAll('#res .card')].slice(0,2);
+    const im = cs[0].querySelector('.shot img'), r = im.getBoundingClientRect();
+    const a = cs[0].getBoundingClientRect(), b = cs[1] ? cs[1].getBoundingClientRect() : null;
+    return {n:cs.length, l0:Math.round(a.left), l1:b?Math.round(b.left):null,
+            t0:Math.round(a.top), t1:b?Math.round(b.top):null, w0:Math.round(a.width),
+            ratio:+(r.width/r.height).toFixed(3), nat:+(im.naturalWidth/im.naturalHeight).toFixed(3)};
+  })())`));
+  const g1 = await colGeo();
+  check('单列：两张卡竖直排（左边相同）', g1.n >= 2 && g1.l0 === g1.l1, JSON.stringify(g1));
+
+  await ev(`document.querySelector('#cnt .segsm button[data-g="2"]').click()`); await sleep(400);
+  check('点「双列」后结果区带上 g2', await ev(`document.querySelector('#res').classList.contains('g2')`));
+  check('高亮跟着挪到「双列」', await ev(`document.querySelector('#cnt .segsm button.on').dataset.g`) === '2');
+  const g2 = await colGeo();
+  check('双列：前两张卡并排（左边不同、顶边对齐）',
+    g2.n >= 2 && g2.l0 !== g2.l1 && Math.abs(g2.t0 - g2.t1) < 2, JSON.stringify(g2));
+  check('双列：卡片确实变窄了（不到单列的 60%）', g2.w0 < g1.w0 * 0.6, g1.w0 + ' → ' + g2.w0);
+  check('双列：卡片图仍等比（没被拉变形）', Math.abs(g2.ratio - g2.nat) < 0.02, JSON.stringify(g2));
+  await shot('18-搜索-双列.png');
+
+  // 偏好要存住：刷新后还得是双列
+  await cdp.send('Page.navigate', { url }); await sleep(1600);
+  if (!(await waitReady())) throw new Error('刷新后页面没就绪');
+  await sleep(600);
+  await setQ('中华');
+  check('刷新后仍是双列（偏好存住了）', await ev(`document.querySelector('#res').classList.contains('g2')`));
+
+  // 切回单列收尾：后面/上面的量尺寸断言都按单列写的
+  await ev(`document.querySelector('#cnt .segsm button[data-g="1"]').click()`); await sleep(300);
+  check('切回单列：g2 摘掉、高亮回到「单列」',
+    await ev(`!document.querySelector('#res').classList.contains('g2')`) &&
+    (await ev(`document.querySelector('#cnt .segsm button.on').dataset.g`)) === '1');
+
   check('无 JS 异常 / console.error', errors.length === 0, errors.slice(0, 5).join(' | '));
 
   // 报告

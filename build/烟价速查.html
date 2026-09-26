@@ -98,7 +98,15 @@ header .brand,header .searchbox{max-width:880px;margin:0 auto}
 .panel{display:none;padding:14px 0 8px}
 .panel.on{display:block}
 .hint{font-size:13px;color:var(--dim);padding:2px 2px 12px;line-height:1.6}
-.count{font-size:13px;color:var(--dim);padding:6px 2px 8px;display:flex;justify-content:space-between}
+.count{font-size:13px;color:var(--dim);padding:6px 2px 8px;display:flex;justify-content:space-between;flex-wrap:wrap;gap:6px 10px}
+.count .cright{display:flex;align-items:center;gap:8px;margin-left:auto}
+/* 单列 / 双列切换（iOS 小分段控件）。放计数行右侧，窄屏放不下就整块折到第二行。 */
+.segsm{display:flex;flex:none;background:var(--chip);border-radius:999px;padding:2px}
+.segsm button{
+  font-family:inherit;font-size:12px;font-weight:500;line-height:1.5;color:var(--dim);
+  background:transparent;border:0;padding:3px 10px;border-radius:999px;cursor:pointer;white-space:nowrap;
+}
+.segsm button.on{background:var(--card);color:var(--fg);font-weight:600}
 .chips{display:flex;flex-wrap:wrap;gap:8px;padding:2px 0 8px}
 .chips b{
   font-weight:500;font-size:14px;background:var(--chip);border:0;
@@ -154,6 +162,16 @@ header .brand,header .searchbox{max-width:880px;margin:0 auto}
   font-size:11px;color:var(--primary);background:var(--primary-dim);font-style:normal;font-weight:600;
   padding:3px 9px;border-radius:999px;white-space:nowrap;flex:none;
 }
+/* ---------- 双列模式：结果卡排成两列网格 ----------
+   只加一条 #res.g2 就够，单列那一套规则一条都不动（默认仍是单列）。
+   ⚠️ .meta 在窄卡里一行塞不下「表名 + 商品名 + 位置」，所以让它换行，
+      并用 order:-1 把商品名顶到第一行 —— 否则表名会先占满一行，名字被挤到第二行。 */
+#res.g2{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;align-items:start}
+#res.g2 .card{margin:0}
+#res.g2 .card .meta{flex-wrap:wrap;gap:5px 6px;padding:8px 10px}
+#res.g2 .card .nm{order:-1;flex:1 1 100%;font-size:14px}
+#res.g2 .card .pos{font-size:11px;padding:2px 8px}
+#res.g2 .card .tb{font-size:10px;padding:2px 7px}
 .empty{text-align:center;color:var(--dim);padding:48px 16px;font-size:15px;line-height:1.6}
 .empty .btnwide{
   display:inline-block;margin-top:14px;background:var(--primary);color:#fff;border:0;
@@ -1599,6 +1617,25 @@ document.addEventListener('keydown', e => {
 /* ================== 结果渲染 ================== */
 const MAXCARD = 60;
 
+/* ---- 单列 / 双列：店主自己的看图习惯，存本机（跟快捷词一样不走同步） ---- */
+const LS_COLS = 'cigpricer.cols';
+let gridN = 1;
+try { gridN = localStorage.getItem(LS_COLS) === '2' ? 2 : 1; } catch (e) {}
+function applyCols(){ $('#res').classList.toggle('g2', gridN === 2); }
+function segHTML(){
+  return '<span class="segsm">' +
+    '<button data-g="1"' + (gridN === 1 ? ' class="on"' : '') + '>单列</button>' +
+    '<button data-g="2"' + (gridN === 2 ? ' class="on"' : '') + '>双列</button></span>';
+}
+function setCols(n){
+  gridN = (n === 2) ? 2 : 1;
+  try { localStorage.setItem(LS_COLS, String(gridN)); } catch (e) {}
+  applyCols();
+  // 就地改高亮，不重跑 renderResults（重跑会丢掉"当前搜的是什么"以外的状态）
+  const seg = $('#cnt .segsm');
+  if (seg) seg.querySelectorAll('button').forEach(b => b.classList.toggle('on', +b.dataset.g === gridN));
+}
+
 /* ---- 快捷搜索：出厂默认来自构建期 RAW.hot，店主可自定义（存 localStorage） ---- */
 const LS_HOT = 'cigpricer.hot';
 let hotEdit = false;
@@ -1694,7 +1731,8 @@ function renderResults(q){
   const show = rs.slice(0, MAXCARD);
   cnt.innerHTML = '<span>' + (loose ? '没有完全匹配，以下是相近的商品（' + rs.length + '）' : '找到 ' + rs.length + ' 个结果') +
     (locked ? ' · 只在「' + esc(locked) + '」里搜' : '') + '</span>' +
-    '<span>' + (rs.length > MAXCARD ? '只显示前 ' + MAXCARD + ' 个 · ' : '') + '点开可放大 ↗</span>';
+    '<span class="cright">' + (rs.length > MAXCARD ? '只显示前 ' + MAXCARD + ' 个 · ' : '') +
+    '点开可放大 ↗' + segHTML() + '</span>';
   box.innerHTML = show.map((it, i) =>
     '<div class="card" data-i="' + i + '">' +
       '<div class="shot"><img loading="lazy" style="aspect-ratio:' + it.w + '/' + it.h + '" ' +
@@ -1732,6 +1770,11 @@ $('#res').addEventListener('click', e => {
   }
   const c = e.target.closest('.card');
   if (c) showViewer(lastList, +c.dataset.i, $('#q').value);
+});
+/* 单列 / 双列切换：按钮是 renderResults 每次重建的，所以用委托，不逐个绑 */
+$('#cnt').addEventListener('click', e => {
+  const b = e.target.closest('button[data-g]');
+  if (b) setCols(+b.dataset.g);
 });
 $('#hot').addEventListener('click', e => {
   /* 编辑模式里的 × 删除 */
@@ -2829,6 +2872,7 @@ function applyAll(){
   buildAll();
   renderMgr();
   showSheet(Math.max(0, Math.min(sheetT, TBL.length - 1)));
+  applyCols();                                   // 双列是店主的习惯，重绘时也要贴回去
   lastList = renderResults($('#q').value);
 }
 

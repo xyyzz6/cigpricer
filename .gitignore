@@ -1,6 +1,7 @@
 # ===== 大二进制 / 构建产物 =====
 build/*.apk
 build/*.apk.idsig
+build/_dbg/
 build/pack/
 build/mock-vendor.log
 dist/
